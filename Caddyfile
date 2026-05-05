@@ -1,0 +1,9 @@
+:80 {
+    root * /app/public
+    file_server
+
+    @notStatic {
+        not file
+    }
+    reverse_proxy @notStatic localhost:3000
+}

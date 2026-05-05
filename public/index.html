@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Hydr'Hacked</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a1a">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hydr'Hacked">
+    <link rel="apple-touch-icon" href="images/icone-192.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+</head>
+<body>
+
+    <div id="login-overlay" class="overlay active">
+        <div class="login-box">
+            <div class="logo-large">
+                <i data-lucide="clapperboard" class="icon-xl"></i>
+                <h1>Hydr'Hacked</h1>
+            </div>
+            <form id="login-form">
+                <input type="password" id="api-password" placeholder="Mot de passe API" required autofocus>
+                <button type="submit">Déverrouiller</button>
+            </form>
+            <div id="login-error" class="error-msg hidden">Mot de passe incorrect</div>
+        </div>
+    </div>
+
+    <div id="app-container" class="hidden">
+        
+        <nav class="sidebar">
+            <div class="brand">
+                <i data-lucide="clapperboard" class="brand-icon"></i>
+                <span>Hydr'Hacked</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-target="section-trending">
+                    <i data-lucide="flame"></i>
+                    <span>Tendances</span>
+                </li>
+                <li data-target="section-search">
+                    <i data-lucide="search"></i>
+                    <span>Recherche</span>
+                </li>
+
+                <li data-target="section-downloads">
+                    <i data-lucide="download"></i>
+                    <span>Téléchargements</span>
+                </li>
+                <li data-target="section-settings">
+                    <i data-lucide="settings"></i>
+                    <span>Paramètres</span>
+                </li>
+
+
+            </ul>
+            <div class="nav-footer">
+                <button id="btn-logout" class="btn-text">
+                    <i data-lucide="log-out"></i>
+                    <span>Déconnexion</span>
+                </button>
+            </div>
+        </nav>
+
+        <main class="content-wrapper">
+            
+            <section id="section-trending" class="section active">
+                <div class="hero-header">
+                    <h2>🔥 Tendances du Moment</h2>
+                    <p>Les contenus les plus populaires en ce moment</p>
+                </div>
+                
+                <div class="filter-pills" style="margin-bottom: 2rem;">
+                    <label class="pill">
+                        <input type="radio" name="trending-type" value="film" checked>
+                        <span>Films</span>
+                    </label>
+                    <label class="pill">
+                        <input type="radio" name="trending-type" value="serie">
+                        <span>Séries</span>
+                    </label>
+                </div>
+
+                <div id="trending-grid" class="media-grid">
+                    <div class="loader-wrapper">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-search" class="section hidden">
+                <div class="hero-header">
+                    <h2>Recherche Globale</h2>
+                </div>
+                
+                <div class="search-hero">
+                    <div class="search-input-wrapper">
+                        <i data-lucide="search" class="search-icon-inside"></i>
+                        <input type="text" id="search-input" placeholder="Titre du film, série...">
+                        <button id="btn-search-trigger" class="btn-search-action">Go</button>
+                    </div>
+                    <div class="filter-pills">
+                        <label class="pill">
+                            <input type="radio" name="search-type" value="film" checked>
+                            <span>Films</span>
+                        </label>
+                        <label class="pill">
+                            <input type="radio" name="search-type" value="serie">
+                            <span>Séries</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="search-results" class="media-grid"></div>
+            </section>
+
+
+
+            <section id="section-downloads" class="section hidden">
+                <div class="header-row">
+                    <h2>Téléchargements</h2>
+                    <button id="btn-refresh-downloads" class="btn-icon-only">
+                        <i data-lucide="refresh-cw"></i>
+                    </button>
+                </div>
+                <div id="downloads-list" class="downloads-container">
+                    <div class="empty-state">Aucun téléchargement actif</div>
+                </div>
+            </section>
+
+            <section id="section-settings" class="section hidden">
+                <div class="hero-header">
+                    <h2>Paramètres</h2>
+                </div>
+                <div class="form-card" style="max-width: 500px; margin: 0 auto;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                        <span style="font-weight: 600;">Intégration JDownloader</span>
+                        <input type="checkbox" id="toggle-jd" style="width: 20px; height: 20px;">
+                    </label>
+                    <p style="font-size: 0.85rem; color: var(--text-sec); margin-top: 10px;">Si désactivé, le lien 1fichier sera affiché directement sous forme de pop-up sans être envoyé à JDownloader.</p>
+                </div>
+            </section>
+
+
+
+        </main>
+    </div>
+
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Titre</h3>
+                <button id="modal-close"><i data-lucide="x"></i></button>
+            </div>
+            <div id="modal-body" class="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden">Notification</div>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW enregistré!', reg.scope))
+                    .catch(err => console.log('SW échec:', err));
+            });
+        }
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
