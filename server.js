@@ -59,7 +59,7 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         httpOnly: true,
-        secure: true,
+        secure: 'auto',
         maxAge: 48 * 60 * 60 * 1000
     }
 }));
@@ -160,9 +160,16 @@ async function checkSiteStatus() {
     if (globalState.isCheckingStatus) return;
     globalState.isCheckingStatus = true;
     console.log("[Vérification] Test du site source...");
+    console.log(`[DEBUG] DW_API_KEY: ${process.env.DW_API_KEY ? process.env.DW_API_KEY.substring(0, 10) + '...' : 'NON DÉFINIE'}`);
 
     try {
-        globalState.trendingFilms = await dwApi.getTrending('movie');
+        const trendingFilms = await dwApi.getTrending('movie');
+        console.log(`[DEBUG] getTrending('movie') a renvoyé: ${JSON.stringify(trendingFilms?.length)} résultats`);
+        if (trendingFilms && trendingFilms.length > 0) {
+            console.log(`[DEBUG] Premier film: ${JSON.stringify(trendingFilms[0]?.title)}`);
+        }
+        
+        globalState.trendingFilms = trendingFilms;
         
         if (globalState.trendingFilms && globalState.trendingFilms.length > 0) {
             globalState.isSiteOffline = false;
@@ -176,6 +183,7 @@ async function checkSiteStatus() {
             globalState.siteOfflineMessage = "L'API source est indisponible ou a bloqué la requête.";
             globalState.trendingFilms = [];
             globalState.trendingSeries = [];
+            console.log("[DEBUG] Aucun film trending reçu. Le site est marqué offline.");
         }
     } catch (error) {
         console.error(`[ERREUR FATALE API] ${error.message}`);

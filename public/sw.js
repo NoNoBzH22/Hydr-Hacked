@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hydrhacked-v3';
+const CACHE_NAME = 'hydrhacked-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -6,7 +6,8 @@ const STATIC_ASSETS = [
   '/app.js',
   '/manifest.json',
   '/images/icone-192.png',
-  '/images/icone-512.png'
+  '/images/icone-512.png',
+  '/lucide.min.js'
 ];
 
 // 1. INSTALLATION

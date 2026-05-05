@@ -11,6 +11,10 @@
 
 Fini Puppeteer, Chromium et les bypass de Cloudflare complexes. Ici, on parle directement à la source, proprement et efficacement.
 
+> [!IMPORTANT]
+> Pour profiter pleinement de l'outil, un abonnement de 5€ (pack Go) sur Hydracker est actuellement nécessaire pour obtenir une clé API fonctionnelle. 
+> **Note :** Restez à l'affût, nous sortirons prochainement notre propre base de données contenant l'intégralité de leurs liens, pour une autonomie totale !
+
 ## ✨ Fonctionnalités
 - **Hydr'Hacked API** : Serveur Node.js ultra-léger communiquant directement avec les endpoints privés de l'API Hydracker.
 - **Frontend Premium** : Interface web moderne et responsive (Dark Mode, animations fluides).

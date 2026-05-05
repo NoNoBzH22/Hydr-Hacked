@@ -217,6 +217,7 @@ class DarkiWorldAPI {
             const hostName = getHostName(l).toLowerCase();
             return hostName.includes('1fichier');
         });
+        console.log(isSeries)
 
         return filtered.map(l => ({
             id: l.id,  // DarkiWorld lien ID (used for /get-link)
