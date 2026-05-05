@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
-const { spawn, exec } = require('child_process');
+
 require('dotenv').config();
 
 // DarkiWorld API module (remplace le scraping Puppeteer)
@@ -24,13 +24,11 @@ const CONFIG = {
     SECRET: process.env.SECRET || 'hydracker-secret-key-12345',
     MIN_MINUTES: parseInt(process.env.MIN_MINUTES, 10) || 15,
     MAX_MINUTES: parseInt(process.env.MAX_MINUTES, 10) || 30,
-    DATA_DIR: process.env.DATA_DIR,
-    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD
+
 };
 
 const PATHS = {
     JD_WATCH: '/downloads',
-    // (MUSIC path removed)
 };
 
 const app = express();
@@ -87,14 +85,7 @@ const authMiddleware = (req, res, next) => {
     }
 };
 
-// --- MIDDLEWARE ADMIN ---
-const adminMiddleware = (req, res, next) => {
-    if (req.session && req.session.isAdmin) {
-        next();
-    } else {
-        res.status(403).json({ error: "Accès refusé. Réservé aux administrateurs." });
-    }
-};
+
 
 // --- État Global ---
 let globalState = {
@@ -507,8 +498,7 @@ app.listen(PORT, async () => {
     console.log(`${'='.repeat(60)}`);
     console.log(`Serveur API démarré sur http://localhost:${PORT}`);
 
-    // Start DarkiWorld persistent browser session
-    console.log('\n[init] Initialisation API DarkiWorld...');
+    console.log('\n[init] Initialisation API Hydr\'Hacked...');
 
     // Check site status & trending
     const scheduleNextCheck = () => {

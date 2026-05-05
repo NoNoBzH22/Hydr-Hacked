@@ -59,12 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- STATE & LOOPS MANAGER ---
     const state = {
-
         downloadInterval: null,
-        musicInterval: null,
         trendingData: { films: [], series: [] },
-        isAdmin: false,
-        adminChart: null
     };
 
     // --- GESTION INTELLIGENTE DES BOUCLES ---
@@ -85,170 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // 2. Gestion Musique (Actif seulement pendant le DL)
-    const startMusicLoop = () => {
-        if (state.musicInterval) clearInterval(state.musicInterval);
-        updateMusicStatus(); // Appel immédiat
-        state.musicInterval = setInterval(updateMusicStatus, 2000); // Mise à jour toutes les 2s
-        console.log("Flux Musique : ACTIVÉ");
-    };
 
-    const stopMusicLoop = () => {
-        if (state.musicInterval) {
-            clearInterval(state.musicInterval);
-            state.musicInterval = null;
-            console.log("Flux Musique : ARRÊTÉ (Fini ou Inactif)");
-        }
-    };
-    // --- FONCTIONS ADMIN ---
-    const renderAdminChart = (labels, dataValues) => {
-        const ctx = dom('adminChart').getContext('2d');
-        if (state.adminChart) state.adminChart.destroy(); // On détruit l'ancien avant de redessiner
-
-        state.adminChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Go Téléchargés',
-                    data: dataValues,
-                    borderColor: '#e50914',
-                    backgroundColor: 'rgba(229, 9, 20, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4 // Courbe arrondie
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { color: '#333' }, ticks: { color: '#a3a3a3' } },
-                    y: { grid: { color: '#333' }, ticks: { color: '#a3a3a3' }, beginAtZero: true }
-                }
-            }
-        });
-    };
-
-    const loadAdminData = async () => {
-        if (!state.isAdmin) return;
-        try {
-            // 1. Stats globales
-            const stats = await apiCall('/admin/stats-global');
-            dom('admin-total-gb').textContent = stats.totalGb + ' Go';
-            dom('admin-total-dls').textContent = stats.totalDownloads;
-            dom('admin-total-reqs').textContent = stats.totalRequests;
-            dom('admin-unique-ips').textContent = stats.uniqueIps;
-
-            // 2. Derniers téléchargements (avec surnoms)
-            const dls = await apiCall('/admin/recent-downloads');
-            const dlBody = dom('admin-dl-tbody');
-            dlBody.innerHTML = '';
-            dls.forEach(dl => {
-                const date = new Date(dl.timestamp).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-                const displayName = dl.nickname
-                    ? `<span style="color: var(--primary); font-weight: 600;">${dl.nickname}</span>`
-                    : `<span style="opacity: 0.5; font-size: 0.85em;">${dl.ip}</span>`;
-                dlBody.innerHTML += `<tr><td>${date}</td><td>${displayName}</td><td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis;">${dl.title}</td><td>${dl.size_mb}</td></tr>`;
-            });
-
-            // 3. Logs de connexion (avec surnoms)
-            const conns = await apiCall('/admin/connection-logs');
-            const connBody = dom('admin-conn-tbody');
-            connBody.innerHTML = '';
-            conns.forEach(c => {
-                const date = new Date(c.timestamp).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-                const badgeClass = c.status === 'SUCCES' ? 'status-success' : 'status-error';
-                const displayName = c.nickname
-                    ? `<span style="color: var(--primary); font-weight: 600;">${c.nickname}</span>`
-                    : `<span style="opacity: 0.5; font-size: 0.85em;">${c.ip}</span>`;
-                connBody.innerHTML += `<tr><td>${date}</td><td>${displayName}</td><td><span class="status-badge ${badgeClass}">${c.status}</span></td></tr>`;
-            });
-
-            // 4. Graphique
-            const graphData = await apiCall('/admin/graph-data');
-            renderAdminChart(graphData.labels, graphData.values);
-
-            // 5. IPs Inconnues — Notification
-            const unknowns = await apiCall('/admin/unknown-ips');
-            const alertBox = dom('unknown-ips-alert');
-            const listBox = dom('unknown-ips-list');
-            if (unknowns && unknowns.length > 0) {
-                show(alertBox);
-                listBox.innerHTML = '';
-                unknowns.forEach(u => {
-                    const chip = document.createElement('button');
-                    chip.className = 'btn-outline';
-                    chip.style.cssText = 'padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; border: 1px solid #f59e0b; color: #f59e0b; background: transparent; transition: all 0.2s;';
-                    chip.textContent = u.ip;
-                    chip.title = `Dernière connexion : ${new Date(u.last_seen).toLocaleString('fr-FR')}`;
-                    chip.onmouseover = () => { chip.style.background = '#f59e0b'; chip.style.color = '#000'; };
-                    chip.onmouseout = () => { chip.style.background = 'transparent'; chip.style.color = '#f59e0b'; };
-                    chip.onclick = () => {
-                        // Pré-remplit le formulaire d'ajout
-                        dom('nickname-ip').value = u.ip;
-                        dom('nickname-name').value = '';
-                        dom('nickname-name').focus();
-                        // Scroll vers le formulaire
-                        dom('nickname-name').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    };
-                    listBox.appendChild(chip);
-                });
-            } else {
-                hide(alertBox);
-            }
-
-            // 6. Utilisateurs connus — Tableau
-            const known = await apiCall('/admin/known-ips');
-            const knownBody = dom('known-ips-tbody');
-            knownBody.innerHTML = '';
-            known.forEach(k => {
-                knownBody.innerHTML += `<tr>
-                    <td style="font-family: monospace; font-size: 0.85em;">${k.ip}</td>
-                    <td style="font-weight: 600; color: var(--primary);">${k.nickname}</td>
-                    <td><button class="btn-delete-nickname" data-ip="${k.ip}" style="background: none; border: 1px solid #ef4444; color: #ef4444; padding: 4px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; transition: all 0.2s;">Supprimer</button></td>
-                </tr>`;
-            });
-
-            // Attach delete handlers
-            document.querySelectorAll('.btn-delete-nickname').forEach(btn => {
-                btn.onmouseover = () => { btn.style.background = '#ef4444'; btn.style.color = '#fff'; };
-                btn.onmouseout = () => { btn.style.background = 'none'; btn.style.color = '#ef4444'; };
-                btn.onclick = async () => {
-                    const ip = btn.dataset.ip;
-                    try {
-                        await apiCall('/admin/remove-nickname', 'DELETE', { ip });
-                        showToast(`Surnom supprimé pour ${ip}`);
-                        loadAdminData();
-                    } catch (e) { showToast('Erreur : ' + e.message); }
-                };
-            });
-
-        } catch (err) {
-            showToast("Erreur admin : " + err.message);
-        }
-    };
-
-    // Bouton d'ajout de surnom
-    if (dom('btn-add-nickname')) {
-        dom('btn-add-nickname').onclick = async () => {
-            const ip = dom('nickname-ip').value.trim();
-            const nickname = dom('nickname-name').value.trim();
-            if (!ip || !nickname) return showToast('IP et surnom requis.');
-            try {
-                await apiCall('/admin/set-nickname', 'POST', { ip, nickname });
-                showToast(`✅ ${nickname} assigné à ${ip}`);
-                dom('nickname-ip').value = '';
-                dom('nickname-name').value = '';
-                loadAdminData(); // Rafraîchit tout le panel
-            } catch (e) { showToast('Erreur : ' + e.message); }
-        };
-    }
-
-    // Bouton de rafraîchissement manuel
-    if (dom('btn-refresh-admin')) {
-        dom('btn-refresh-admin').onclick = loadAdminData;
-    }
 
     // --- NAVIGATION ---
     const navLinks = document.querySelectorAll('.nav-links li[data-target]');
@@ -257,18 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
     navLinks.forEach(link => {
         link.addEventListener('click', async () => {
             const targetId = link.dataset.target;
-            // --- INTERCEPTION ADMIN ---
-            if (targetId === 'section-admin') {
-                if (!state.isAdmin) {
-                    // Au lieu d'un prompt, on redirige vers Caddy !
-                    window.location.href = '/auth/google';
-                    return; // On bloque tout, la page va recharger via Google
-                }
-
-                // Si on est déjà admin, on charge direct
-                loadAdminData();
-            }
-            // --------------------------
 
             // 1. Gestion UI classique
             navLinks.forEach(l => l.classList.remove('active'));
@@ -337,24 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
             radio.addEventListener('change', renderTrending);
         });
 
-        // --- DETECTER LE RETOUR DE GOOGLE OAUTH2 ---
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('admin') === '1') {
-            state.isAdmin = true;
-            // On nettoie l'URL pour faire propre (sans recharger la page)
-            window.history.replaceState({}, document.title, window.location.pathname);
 
-            // On simule un clic sur l'onglet admin une fois que l'UI est prête
-            setTimeout(() => {
-                const adminTab = document.querySelector('.nav-links li[data-target="section-admin"]');
-                if (adminTab) {
-                    adminTab.innerHTML = '<i data-lucide="unlock"></i><span>Dashboard</span>';
-                    lucide.createIcons();
-                    adminTab.click(); // Ouvre la page et déclenche loadAdminData()
-                    showToast("Connexion Google réussie !");
-                }
-            }, 300);
-        }
+
 
         // --- HEARTBEAT : Détection Hydracker Down + Refresh Tendances ---
         let wasOffline = false;
@@ -386,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 
-    // --- MUSIC LOGIC SUPPRIMÉ ---
+
 
     // --- DOWNLOADS (LIST) ---
     const loadDownloads = async () => {
@@ -704,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.style.borderColor = "var(--border)";
                     };
 
-                    // (Calcul badge Plex supprimé)
+
                     btn.innerHTML = `<span>${cleanLabel.trim()}</span>`;
 
                     btn.onclick = async () => {
@@ -841,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // (Logique Manuelle supprimée car inutile)
 
-    // (Refresh Plex supprimé)
+
 
     dom('btn-logout').onclick = async () => {
         await apiCall('/logout', 'POST');
