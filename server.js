@@ -89,11 +89,11 @@ const authMiddleware = (req, res, next) => {
 
 // --- État Global ---
 let globalState = {
-    // DarkiWorld state (remplace le browser Puppeteer dédié par route)
     currentTitleId: null,
     currentTitleName: null,
     currentSeason: 1,
     currentLiens: [],    // les objets lien bruts de l'API
+    directUrlMap: {},    // lienId -> URL directe (films via /download)
     isSeries: false,
     // Trending (conservé)
     isSiteOffline: true,
@@ -245,11 +245,8 @@ app.get('/trending', (req, res) => {
 
 // ========================= DARKIWORLD ROUTES (API-BASED) =========================
 
-// Recherche — API directe, pas de Puppeteer
-app.post('/search', authMiddleware, async (req, res) => {
-    if (globalState.isCheckingStatus) return res.status(503).json({ error: "Vérification en cours, réessayez dans 30 secondes." });
-    if (globalState.isSiteOffline) return res.status(503).json({ error: globalState.siteOfflineMessage });
-
+// Recherche — publique, pas d'auth requise
+app.post('/search', async (req, res) => {
     const { title, mediaType = 'film' } = req.body;
     if (!title) return res.status(400).json({ error: "Titre manquant." });
 
@@ -263,15 +260,12 @@ app.post('/search', authMiddleware, async (req, res) => {
             if (mediaType === 'film') {
                 return rType === 'movie' || rType === 'animes' || rType === 'doc' || rType === 'other';
             }
-            // Séries
             return rType === 'series' || rType === 'serie' || rType === 'animes' || rType === 'doc' || rType === 'other';
         });
         const cards = dwApi.searchResultsToCards(filtered);
 
         if (!cards.length) return res.status(404).json({ error: "Aucun résultat trouvé." });
-
         console.log(`Recherche OK. ${cards.length} résultats.`);
-
         res.json(cards);
     } catch (error) {
         console.error("Erreur /search:", error.message);
@@ -280,7 +274,7 @@ app.post('/search', authMiddleware, async (req, res) => {
 });
 
 
-// Sélection film/série — API au lieu de scraping
+// Sélection film/série
 app.post('/select-movie', apiLimiter, authMiddleware, async (req, res) => {
     const { hrefPath, title, type } = req.body;
     if (!hrefPath || !title) return res.status(400).json({ error: "Données manquantes." });
@@ -288,15 +282,15 @@ app.post('/select-movie', apiLimiter, authMiddleware, async (req, res) => {
     console.log(`\n--- Sélection: "${title}" (${hrefPath}) [Type fourni: ${type}] ---`);
 
     try {
-        // Extraire le titleId du hrefPath (/titles/12345/download)
         const match = hrefPath.match(/\/titles\/(\d+)/);
         if (!match) return res.status(400).json({ error: "Format de chemin invalide." });
         const titleId = parseInt(match[1]);
 
         globalState.currentTitleId = titleId;
         globalState.currentTitleName = title;
+        globalState.directUrlMap = {};
 
-        // Déterminer si c'est une série
+        // Détecter si c'est une série
         const seasons = await dwApi.getSeasons(titleId);
         if (type) {
             globalState.isSeries = (type === 'series' || type === 'serie' || type === 'tv');
@@ -304,22 +298,29 @@ app.post('/select-movie', apiLimiter, authMiddleware, async (req, res) => {
             globalState.isSeries = seasons.length > 0;
         }
 
-        // Récupérer les liens pour la saison 1 (ou le film)
-        globalState.currentSeason = 1;
-        const liens = await dwApi.getLiens(titleId, 1);
-        globalState.currentLiens = liens;
+        let liens;
+        let clientOptions;
 
-        const clientOptions = dwApi.liensToClientOptions(liens, globalState.isSeries);
+        if (!globalState.isSeries) {
+            // 🎥 FILM : endpoint gratuit /titles/{id}/download, liens déjà résolus
+            liens = await dwApi.getMovieLinks(titleId);
+            globalState.currentLiens = liens;
+            // Stocker les URLs directes
+            liens.forEach(l => { globalState.directUrlMap[l.id] = l.lien; });
+            clientOptions = dwApi.liensToClientOptions(liens, false, true);
+            console.log(`🎥 Film "${title}" : ${clientOptions.length} liens directs 1fichier (mode gratuit)`);
+        } else {
+            // 📺 SÉRIE : endpoint authéntifié /liens
+            globalState.currentSeason = 1;
+            liens = await dwApi.getLiens(titleId, 1);
+            globalState.currentLiens = liens;
+            clientOptions = dwApi.liensToClientOptions(liens, true, false);
+            console.log(`📺 Série "${title}" : ${clientOptions.length} options trouvées`);
+        }
 
         if (!clientOptions.length) return res.status(404).json({ error: "Aucune option 1fichier trouvée." });
 
-        // Formater les saisons pour le frontend
-        const formattedSeasons = seasons.map((num, index) => ({
-            label: `Saison ${num}`,
-            value: num
-        }));
-
-        console.log(`${clientOptions.length} options envoyées. Série: ${globalState.isSeries}, Saisons: ${seasons.length}`);
+        const formattedSeasons = seasons.map(num => ({ label: `Saison ${num}`, value: num }));
         res.json({ clientOptions, hasNextPage: false, seasons: globalState.isSeries ? formattedSeasons : [] });
     } catch (error) {
         console.error("Erreur /select-movie:", error.message);
@@ -327,7 +328,7 @@ app.post('/select-movie', apiLimiter, authMiddleware, async (req, res) => {
     }
 });
 
-// Sélection tendance — même logique
+// Sélection tendance
 app.post('/select-trending', apiLimiter, authMiddleware, async (req, res) => {
     if (globalState.isCheckingStatus) return res.status(503).json({ error: "Vérification en cours." });
     if (globalState.isSiteOffline) return res.status(503).json({ error: globalState.siteOfflineMessage });
@@ -344,6 +345,7 @@ app.post('/select-trending', apiLimiter, authMiddleware, async (req, res) => {
 
         globalState.currentTitleId = titleId;
         globalState.currentTitleName = title;
+        globalState.directUrlMap = {};
 
         const seasons = await dwApi.getSeasons(titleId);
         if (type) {
@@ -351,17 +353,29 @@ app.post('/select-trending', apiLimiter, authMiddleware, async (req, res) => {
         } else {
             globalState.isSeries = seasons.length > 0;
         }
-        globalState.currentSeason = 1;
 
-        const liens = await dwApi.getLiens(titleId, 1);
-        globalState.currentLiens = liens;
+        let liens;
+        let clientOptions;
 
-        const clientOptions = dwApi.liensToClientOptions(liens, globalState.isSeries);
+        if (!globalState.isSeries) {
+            // 🎥 FILM : endpoint gratuit
+            liens = await dwApi.getMovieLinks(titleId);
+            globalState.currentLiens = liens;
+            liens.forEach(l => { globalState.directUrlMap[l.id] = l.lien; });
+            clientOptions = dwApi.liensToClientOptions(liens, false, true);
+            console.log(`🎥 Film tendance "${title}" : ${clientOptions.length} liens directs`);
+        } else {
+            // 📺 SÉRIE
+            globalState.currentSeason = 1;
+            liens = await dwApi.getLiens(titleId, 1);
+            globalState.currentLiens = liens;
+            clientOptions = dwApi.liensToClientOptions(liens, true, false);
+            console.log(`📺 Série tendance "${title}" : ${clientOptions.length} options`);
+        }
+
         if (!clientOptions.length) return res.status(404).json({ error: "Aucune option 1fichier trouvée." });
 
-        const formattedSeasons = seasons.map((num) => ({ label: `Saison ${num}`, value: num }));
-
-        console.log(`${clientOptions.length} options tendance envoyées.`);
+        const formattedSeasons = seasons.map(num => ({ label: `Saison ${num}`, value: num }));
         res.json({ clientOptions, hasNextPage: false, seasons: globalState.isSeries ? formattedSeasons : [] });
     } catch (error) {
         console.error("Erreur /select-trending:", error.message);
@@ -369,28 +383,35 @@ app.post('/select-trending', apiLimiter, authMiddleware, async (req, res) => {
     }
 });
 
-// Récupération lien final — API resolve + envoi JDownloader + log DB
+// Récupération lien final
 app.post('/get-link', apiLimiter, authMiddleware, async (req, res) => {
     if (req.body.chosenId == null) return res.status(400).json({ error: "ID manquant." });
     const chosenId = parseInt(req.body.chosenId, 10);
-    const useJD = req.body.useJD !== false; // true par défaut
+    const useJD = req.body.useJD !== false;
 
-    const { currentTitleName, isSeries, currentLiens } = globalState;
+    const { currentTitleName, isSeries, currentLiens, directUrlMap } = globalState;
 
-    // Le chosenId est maintenant le lien ID DarkiWorld
     const chosenLien = currentLiens.find(l => l.id === chosenId);
     if (!chosenLien) return res.status(400).json({ error: "Lien introuvable. Session expirée ?" });
 
     console.log(`\n--- Get Link: lien ${chosenId} pour "${currentTitleName}" (JD: ${useJD}) ---`);
 
     try {
-        const finalLink = await dwApi.downloadLien(chosenId);
-        if (!finalLink) throw new Error("Impossible de résoudre le lien 1fichier.");
+        let finalLink;
+
+        // Si l'URL est déjà résolue (film via /download), on la récupère directement
+        if (directUrlMap[chosenId]) {
+            finalLink = directUrlMap[chosenId];
+            console.log(`🎥 Film — lien direct (sans débridage): ${finalLink.substring(0, 80)}...`);
+        } else {
+            // Série : appel à downloadLien()
+            finalLink = await dwApi.downloadLien(chosenId);
+            if (!finalLink) throw new Error("Impossible de résoudre le lien 1fichier.");
+        }
 
         console.log(`🎉 Lien final: ${finalLink}`);
 
         if (useJD) {
-            // Envoi à JDownloader
             await sendToJDownloader(finalLink, currentTitleName, isSeries);
             res.json({ status: 'succès', message: 'Lien envoyé à JDownloader !', link: finalLink });
         } else {

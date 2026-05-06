@@ -138,8 +138,24 @@
 
             <section id="section-settings" class="section hidden">
                 <div class="hero-header">
-                    <h2>Paramètres</h2>
+                    <h2>Paramètres & Administration</h2>
                 </div>
+                
+                <div class="form-card" style="max-width: 500px; margin: 0 auto 1.5rem auto;">
+                    <h3 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Crawler (Base de Données)</h3>
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                        <button id="btn-crawl-movies" class="btn-primary w-full">
+                            <i data-lucide="film"></i> Scraping Films
+                        </button>
+                        <button id="btn-crawl-series" class="btn-primary w-full">
+                            <i data-lucide="tv"></i> Scraping Séries
+                        </button>
+                    </div>
+                    <div id="crawl-status-display" style="font-size: 0.85rem; color: var(--text-sec); background: var(--bg-sec); padding: 0.75rem; border-radius: 8px; font-family: monospace;">
+                        Statut: En attente...
+                    </div>
+                </div>
+
                 <div class="form-card" style="max-width: 500px; margin: 0 auto;">
                     <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
                         <span style="font-weight: 600;">Intégration JDownloader</span>

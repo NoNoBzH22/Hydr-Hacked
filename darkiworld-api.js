@@ -51,7 +51,7 @@ function formatSize(bytes) {
 class DarkiWorldAPI {
     constructor() {
         if (!CONFIG_DW.API_KEY) {
-            console.warn('[DW-API] Attention: DW_API_KEY manquante. L\'API risque de refuser les requêtes nécessitant une authentification.');
+            console.warn('[DW-API] Attention: DW_API_KEY manquante. Les séries ne seront pas disponibles.');
         }
     }
 
@@ -93,19 +93,14 @@ class DarkiWorldAPI {
         }
     }
 
-    // Fetch trending
+    // Fetch trending — pas d'auth requise (endpoint public)
     async getTrending(type) {
-        // type = 'movie' ou 'series'
         try {
-            const data = await this.apiGet('titles', {
-                order: 'trending:desc',
-                type: type,
-                page: 1,
-                paginate: 'lengthAware'
-            });
-            if (!data) return [];
-            
-            const results = data.pagination ? data.pagination.data : (data.data || []);
+            const url = `${CONFIG_DW.BASE_URL}/api/v1/titles?order=trending:desc&type=${type}&page=1&paginate=lengthAware`;
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return [];
+            const data = await res.json();
+            const results = (data.pagination || {}).data || data.data || [];
             return this.searchResultsToCards(results).slice(0, 19);
         } catch (e) {
             console.error(`[DW-API] getTrending Error for ${type}:`, e.message);
@@ -129,7 +124,7 @@ class DarkiWorldAPI {
         }
     }
 
-    // ===================== AUTH API =====================
+    // ===================== AUTH API (séries) =====================
 
     async getLiens(titleId, season = 1) {
         const allLiens = [];
@@ -150,6 +145,41 @@ class DarkiWorldAPI {
         }
         console.log(`[DW-API] Got ${allLiens.length} liens for title ${titleId} season ${season}`);
         return allLiens;
+    }
+
+    // ===================== FREE API (films) =====================
+    // Utilise GET /titles/{id}/download — fonctionne sans compte Premium.
+    // Les liens 1fichier sont directement dans la réponse (alternative_videos).
+
+    async getMovieLinks(titleId) {
+        const url = `${CONFIG_DW.BASE_URL}/api/v1/titles/${titleId}/download`;
+        try {
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!res.ok) {
+                console.error(`[DW-API] getMovieLinks HTTP ${res.status} for title ${titleId}`);
+                return [];
+            }
+            const data = await res.json();
+
+            // Collecter video + alternative_videos
+            const all = [];
+            if (data.video) all.push(data.video);
+            if (Array.isArray(data.alternative_videos)) all.push(...data.alternative_videos);
+
+            // Garder uniquement les liens 1fichier avec une URL valide
+            const fichierLinks = all.filter(l => {
+                const host = (l.host && l.host.name) || '';
+                return host.toLowerCase().includes('1fichier') && l.lien && l.lien.includes('1fichier.com');
+            });
+
+            console.log(`[DW-API] getMovieLinks: ${fichierLinks.length} liens 1fichier directs pour title ${titleId}`);
+            return fichierLinks;
+        } catch (e) {
+            console.error(`[DW-API] getMovieLinks Error for title ${titleId}:`, e.message);
+            return [];
+        }
     }
 
     async getSeasons(titleId) {
@@ -211,22 +241,23 @@ class DarkiWorldAPI {
     // ===================== HELPERS =====================
 
     // Convert API liens to the client format expected by the frontend
-    liensToClientOptions(liens, isSeries = false) {
+    // Pour les films via getMovieLinks(), passer isMovieDirect=true : le lien 1fichier est déjà dans l.lien
+    liensToClientOptions(liens, isSeries = false, isMovieDirect = false) {
         // Filter for 1fichier host only (host id = 5)
-        const filtered = liens.filter(l => {
+        const filtered = isMovieDirect ? liens : liens.filter(l => {
             const hostName = getHostName(l).toLowerCase();
             return hostName.includes('1fichier');
         });
-        console.log(isSeries)
 
         return filtered.map(l => ({
-            id: l.id,  // DarkiWorld lien ID (used for /get-link)
+            id: l.id,
+            // Pour les films directs, le lien final est déjà dans l.lien
+            finalUrl: isMovieDirect ? l.lien : null,
             size: formatSize(l.taille),
             sizeBytes: l.taille || 0,
-            quality: getQualityName(l),
-
-            episode: (isSeries && (l.episode === 0 || l.episode === "0" || l.episode === "00")) ? 'Saison complète' : (l.episode ? String(l.episode) : null),
+            quality: l.quality || getQualityName(l),
             langs: getLangs(l),
+            episode: (isSeries && (l.episode === 0 || l.episode === "0" || l.episode === "00")) ? 'Saison complète' : (l.episode ? String(l.episode) : null),
         }));
     }
 
