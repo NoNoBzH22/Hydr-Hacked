@@ -12,8 +12,8 @@
 Fini Puppeteer, Chromium et les bypass de Cloudflare complexes. Ici, on parle directement à la source, proprement et efficacement.
 
 > [!IMPORTANT]
-> Pour profiter pleinement de l'outil (séries), un abonnement de 5€ (pack Go) sur Hydracker est nécessaire pour obtenir une clé API.
-> **Bonne nouvelle :** La recherche, les tendances et **tous les films** fonctionnent **sans aucun token**. Vraiment.
+> Pour profiter pleinement de l'outil (séries), un abonnement de 5€ (pack Go) sur Hydracker est nécessaire pour obtenir une clé API.  
+> **Bonne nouvelle :** La recherche, les tendances et **tous les films** fonctionnent **sans aucun token**. Vraiment.  
 > **Note :** Restez à l'affût, nous sortirons prochainement notre propre base de données contenant l'intégralité de leurs liens, pour une autonomie totale !
 
 ## ✨ Fonctionnalités
