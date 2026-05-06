@@ -20,6 +20,7 @@ Fini Puppeteer, Chromium et les bypass de Cloudflare complexes. Ici, on parle di
 - 🎬 **Films — Mode Gratuit** : Liens 1Fichier récupérés **sans token, sans compte Premium** .Les URLs sont directement dans la réponse, aucun débridage nécessaire.
 - 📺 **Séries** : Résolution via l'API authentifiée (token requis pour les épisodes).
 - 🔍 **Recherche & Tendances** : 100% publiques, aucun token requis.
+- 🖼️ **Affiches & Posters** : Les images (TMDB, IMDB, etc.) sont servies via un proxy intégré. Le site reste en HTTP, le serveur va chercher les posters HTTPS pour vous.
 - **Frontend Premium** : Interface web moderne et responsive (Dark Mode, animations fluides).
 - **Intégration JDownloader** : Envoi automatique des liens vers votre instance JDownloader (si activé dans les paramètres).
 - **Pop-up Direct** : Pour ceux qui préfèrent le copier-coller à l'ancienne, le lien final s'affiche en un clic.
@@ -32,6 +33,7 @@ Fini Puppeteer, Chromium et les bypass de Cloudflare complexes. Ici, on parle di
 | 🔍 Recherche | ❌ Public |
 | 🔥 Tendances | ❌ Public |
 | 🎬 Films (liens 1fichier) | ❌ Public |
+| 🖼️ Affiches (posters) | ❌ Public (proxy intégré) |
 | 📺 Séries (liens 1fichier) | ✅ Oui (`DW_API_KEY`) |
 
 ## 🤝 Un Projet Communautaire

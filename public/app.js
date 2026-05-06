@@ -283,16 +283,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // --- PROXY IMAGE HELPER ---
+    // Passe les URLs HTTPS des posters par le proxy serveur pour éviter le blocage mixed-content
+    const proxyImageUrl = (url) => {
+        if (!url) return '';
+        // Si l'image est déjà locale ou en HTTP sur notre domaine, pas besoin de proxy
+        if (url.startsWith('/') || url.startsWith('data:')) return url;
+        // Proxy les URLs HTTPS via le serveur
+        if (url.startsWith('https://')) {
+            return `/proxy-image?url=${encodeURIComponent(url)}`;
+        }
+        return url;
+    };
+
     // --- TRENDING & CARDS ---
     const createCard = (movie) => {
         const div = document.createElement('div');
         div.className = 'card';
 
         const badge = '';
+        const posterSrc = proxyImageUrl(movie.image);
 
         div.innerHTML = `
             <div class="poster-container">
-                <img src="${movie.image || ''}" loading="lazy" alt="${movie.title}">
+                <img src="${posterSrc}" loading="lazy" alt="${movie.title}" onerror="this.style.display='none'">
                 ${badge}
             </div>
             <div class="card-info">
