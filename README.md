@@ -92,12 +92,16 @@ Créez un fichier `.env` à la racine du projet et configurez les variables suiv
 
 | Variable | Type | Description |
 |---|---|---|
+| `BASE_URL` | **Requis** | URL complète du site Hydracker (en HTTPS). Non fournie par défaut pour des raisons évidentes. |
 | `API_PASSWORD` | **Requis** | Mot de passe pour l'écran de connexion initial. |
 | `SECRET` | **Requis** | Clé secrète pour les sessions (mettez ce que vous voulez). |
 | `DW_API_KEY` | Optionnel | Votre token Hydracker (nécessaire **uniquement** pour les séries). |
 | `PORT` | Optionnel | Port de l'application (Défaut : `3067`). |
 | `JD_HOST` | Optionnel | IP/Hôte de JDownloader (ex: `192.168.1.50`). |
 | `JD_API_PORT` | Optionnel | Port API de JDownloader (Défaut : `3128`). |
+
+> [!WARNING]
+> **`BASE_URL` n'est volontairement pas renseignée par défaut** dans le code ni dans le `.env.example`. Vous devez la remplir vous-même avec l'URL du site source. Si vous ne savez pas laquelle c'est, cherchez un peu — on ne peut pas tout faire pour vous non plus. 😏
 
 > [!TIP]
 > **Comment obtenir ma `DW_API_KEY` ?**
