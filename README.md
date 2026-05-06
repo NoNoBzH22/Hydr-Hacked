@@ -101,7 +101,7 @@ Créez un fichier `.env` à la racine du projet et configurez les variables suiv
 | `JD_API_PORT` | Optionnel | Port API de JDownloader (Défaut : `3128`). |
 
 > [!WARNING]
-> **`BASE_URL` n'est volontairement pas renseignée par défaut** dans le code ni dans le `.env.example`. Vous devez la remplir vous-même avec l'URL du site source. Si vous ne savez pas laquelle c'est, cherchez un peu — on ne peut pas tout faire pour vous non plus. 😏
+> **`BASE_URL` n'est volontairement pas renseignée par défaut** dans le code ni dans le `.env.example`. Vous devez la remplir vous-même avec l'URL du site source. Si vous ne savez pas laquelle c'est, cherchez un peu
 
 > [!TIP]
 > **Comment obtenir ma `DW_API_KEY` ?**
