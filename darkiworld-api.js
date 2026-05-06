@@ -8,7 +8,7 @@ const path = require('path');
 require('dotenv').config();
 
 const CONFIG_DW = {
-    BASE_URL: process.env.BASE_URL || 'https://hydracker.com',
+    BASE_URL: process.env.BASE_URL',
     API_KEY: process.env.DW_API_KEY,
 };
 
