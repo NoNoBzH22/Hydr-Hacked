@@ -1,4 +1,6 @@
 # 🐍 Hydr'Hacked 
+> [!IMPORTANT]
+> Merci de bien lire tout ça avant de déployer le server
 
 ![Hydr'Hacked Logo](public/images/icone-192.png)
 
