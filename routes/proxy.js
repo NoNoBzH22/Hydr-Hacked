@@ -10,6 +10,7 @@ const ALLOWED_IMAGE_HOSTS = [
     'img.omdbapi.com',
     'cdn.darkiworld.com',
     'hydracker.com',
+    'zone-telechargement.org',
 ];
 
 router.get('/proxy-image', async (req, res) => {

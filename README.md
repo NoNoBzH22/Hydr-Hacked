@@ -10,13 +10,12 @@
 
 ## 🚀 Présentation
 
-**Hydr'Hacked** est une solution complète (Serveur API + Interface Web) pour crawler, rechercher et télécharger du contenu depuis Hydracker sans les limitations habituelles. 
+**Hydr'Hacked** est une solution complète (Serveur API + Interface Web) pour crawler, rechercher et télécharger du contenu depuis **Zone-Telechargement** (par défaut) ou **Hydracker** (en option). 
 
 > [!IMPORTANT]
-> Pour le moment, **Hydr'Hacked** ne gère pas la récupération des séries sans abonnement Hydracker.
-> Pour récupérer les séries, il faut un abonnement Hydracker (pack Go à 5€) et fournir la clé API dans les paramètres.
-> **Bonne nouvelle :** La recherche, les tendances et **tous les films** fonctionnent **sans aucun token**. Vraiment.
-> **Note :** Restez à l'affût, nous sortirons prochainement notre propre base de données contenant l'intégralité de leurs liens, pour une autonomie totale !
+> **Nouveauté :** L'application utilise désormais **Zone-Telechargement** comme source principale. 
+> Cela signifie que la recherche, les tendances, les films ET les séries sont désormais **100% gratuits et sans aucun token**. 
+> Hydracker reste disponible comme source secondaire dans les paramètres si vous possédez un token.
 
 ## ✨ Fonctionnalités
 
@@ -29,11 +28,11 @@
 
 | Fonctionnalité | 100% gratuit |
 |---|---|
-| 🔍 Recherche | ✅ Gratuit |
-| 🔥 Tendances | ✅ Gratuit |
-| 🎬 Films (liens 1fichier) | ✅ Gratuit |
+| 🔍 Recherche | ✅ Gratuit (ZT) |
+| 🔥 Tendances | ✅ Gratuit (ZT) |
+| 🎬 Films (liens 1fichier) | ✅ Gratuit (ZT) |
 | 🖼️ Affiches (posters) | ✅ Gratuit (proxy intégré) |
-| 📺 Séries (liens 1fichier) | ❌nécessite un abonnement Hydracker |
+| 📺 Séries (liens 1fichier) | ✅ Gratuit (via ZT) |
 
 
 ---
@@ -94,16 +93,17 @@ Créez un fichier `.env` à la racine du projet et configurez les variables suiv
 
 | Variable | Type | Description |
 |---|---|---|
-| `BASE_URL` | **Requis** | URL complète du site Hydracker (en HTTPS). Non fournie par défaut pour des raisons évidentes. |
+| `ZT_BASE_URL` | **Requis** | URL complète du site Zone-Telechargement (ex: `https://zone-telechargement.org`). |
+| `BASE_URL` | Optionnel | URL complète du site Hydracker (nécessaire si vous utilisez un token). |
 | `API_PASSWORD` | **Requis** | Mot de passe pour l'écran de connexion initial. |
 | `SECRET` | **Requis** | Clé secrète pour les sessions (mettez ce que vous voulez). |
-| `DW_API_KEY` | Optionnel | Votre token Hydracker (nécessaire **uniquement** pour les séries). |
+| `DW_API_KEY` | Optionnel | Votre token Hydracker (si utilisé). |
 | `PORT` | Optionnel | Port de l'application (Défaut : `3067`). |
 | `JD_HOST` | Optionnel | IP/Hôte de JDownloader (ex: `192.168.1.50`). |
 | `JD_API_PORT` | Optionnel | Port API de JDownloader (Défaut : `3128`). |
 
 > [!WARNING]
-> **`BASE_URL` n'est volontairement pas renseignée par défaut** dans le code ni dans le `.env.example`. Vous devez la remplir vous-même avec l'URL du site source. Si vous ne savez pas laquelle c'est, cherchez un peu
+> **`ZT_BASE_URL` et `BASE_URL` ne sont volontairement pas renseignées par défaut** dans le code ni dans le `.env.example`. Vous devez les remplir vous-même avec les URLs des sites sources respectifs.
 
 > [!TIP]
 > **Comment obtenir ma `DW_API_KEY` ?**

@@ -308,3 +308,60 @@ input:-webkit-autofill:active {
 .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
 .status-success { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; }
 .status-error { background: rgba(229, 9, 20, 0.15); color: #e50914; border: 1px solid #e50914; }
+
+/* --- NEW MODAL STYLES --- */
+.modal-subtitle { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-sec); font-weight: 700; margin-bottom: 1rem; }
+
+.quality-pill {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 20px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    font-size: 0.9rem;
+}
+
+.quality-pill:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+}
+
+.files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.opt-icon-text { font-size: 1.1rem; margin-right: 8px; }
+.quality-tag { 
+    background: rgba(255,255,255,0.1); 
+    padding: 2px 8px; 
+    border-radius: 4px; 
+    font-size: 0.7rem; 
+    text-transform: uppercase; 
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.direct-link-box { text-align: center; padding: 1rem; }
+.direct-link-box p { color: var(--text-sec); margin-bottom: 1rem; }
+.direct-link-box input { 
+    width: 100%; 
+    padding: 12px; 
+    background: var(--bg-main); 
+    border: 1px solid var(--border); 
+    color: white; 
+    border-radius: var(--radius); 
+    margin-bottom: 1.5rem;
+    font-family: monospace;
+    text-align: center;
+}
+.btn-group { display: flex; gap: 10px; justify-content: center; }
+
+.empty-msg { text-align: center; color: var(--text-sec); padding: 2rem; font-style: italic; }

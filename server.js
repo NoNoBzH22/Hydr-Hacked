@@ -7,7 +7,7 @@ const cors = require('cors');
 const path = require('path');
 
 const { CONFIG } = require('./utils/config');
-const { globalState, dwApi } = require('./utils/state');
+const { globalState, dwApi, ztApi, HYDRACKER_AVAILABLE, ZT_AVAILABLE } = require('./utils/state');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -69,32 +69,61 @@ app.use('/', proxyRoutes);
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Check Site Status
+// ========================= TRENDING / STATUS CHECK =========================
+
 async function checkSiteStatus() {
     if (globalState.isCheckingStatus) return;
     globalState.isCheckingStatus = true;
-    console.log("[Vérification] Test du site source...");
+    const source = globalState.currentSource;
+    console.log(`[Vérification] Test du site source (${source.toUpperCase()})...`);
 
     try {
-        const trendingFilms = await dwApi.getTrending('movie');
-        globalState.trendingFilms = trendingFilms;
-        
-        if (globalState.trendingFilms && globalState.trendingFilms.length > 0) {
-            globalState.isSiteOffline = false;
-            globalState.siteOfflineMessage = "";
-            console.log(`[API] ${globalState.trendingFilms.length} films tendances trouvés.`);
+        if (source === 'zt' && ztApi) {
+            // ============ ZONE-TELECHARGEMENT ============
+            const films = await ztApi.getTrendingFilms();
+            globalState.trendingFilms = films;
 
-            globalState.trendingSeries = await dwApi.getTrending('series');
-            console.log(`[API] ${globalState.trendingSeries.length} séries tendances trouvées.`);
+            if (films && films.length > 0) {
+                globalState.isSiteOffline = false;
+                globalState.siteOfflineMessage = "";
+                console.log(`[ZT] ${films.length} films tendances trouvés.`);
+
+                const series = await ztApi.getTrendingSeries();
+                globalState.trendingSeries = series;
+                console.log(`[ZT] ${series.length} séries tendances trouvées.`);
+            } else {
+                globalState.isSiteOffline = true;
+                globalState.siteOfflineMessage = "Zone-Telechargement est indisponible.";
+                globalState.trendingFilms = [];
+                globalState.trendingSeries = [];
+            }
+
+        } else if (source === 'hydracker' && dwApi) {
+            // ============ HYDRACKER ============
+            const trendingFilms = await dwApi.getTrending('movie');
+            globalState.trendingFilms = trendingFilms;
+
+            if (trendingFilms && trendingFilms.length > 0) {
+                globalState.isSiteOffline = false;
+                globalState.siteOfflineMessage = "";
+                console.log(`[DW] ${trendingFilms.length} films tendances trouvés.`);
+
+                globalState.trendingSeries = await dwApi.getTrending('series');
+                console.log(`[DW] ${globalState.trendingSeries.length} séries tendances trouvées.`);
+            } else {
+                globalState.isSiteOffline = true;
+                globalState.siteOfflineMessage = "L'API Hydracker est indisponible.";
+                globalState.trendingFilms = [];
+                globalState.trendingSeries = [];
+            }
         } else {
             globalState.isSiteOffline = true;
-            globalState.siteOfflineMessage = "L'API source est indisponible ou a bloqué la requête.";
+            globalState.siteOfflineMessage = "Aucune source configurée. Vérifiez votre .env.";
             globalState.trendingFilms = [];
             globalState.trendingSeries = [];
-            console.log("[DEBUG] Aucun film trending reçu. Le site est marqué offline.");
         }
     } catch (error) {
-        console.error(`[ERREUR FATALE API] ${error.message}`);
+        console.error(`[ERREUR FATALE] ${error.message}`);
         globalState.isSiteOffline = true;
         globalState.siteOfflineMessage = "Le site source ne répond pas.";
         globalState.trendingFilms = [];
@@ -111,6 +140,7 @@ app.listen(PORT, async () => {
     console.log(`  Hydr'Hacked — API Server`);
     console.log(`${'='.repeat(60)}`);
     console.log(`Serveur API démarré sur http://localhost:${PORT}`);
+    console.log(`Source par défaut: ${globalState.currentSource.toUpperCase()}`);
 
     console.log('\n[init] Initialisation API Hydr\'Hacked...');
 

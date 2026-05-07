@@ -61,6 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         downloadInterval: null,
         trendingData: { films: [], series: [] },
+        currentSource: 'zt', // 'zt' or 'hydracker'
+        hydrackerAvailable: false,
+        ztAvailable: false,
     };
 
     // --- GESTION INTELLIGENTE DES BOUCLES ---
@@ -145,11 +148,50 @@ document.addEventListener('DOMContentLoaded', () => {
         hide(dom('login-overlay'));
         show(dom('app-container'));
         
+        // --- JDownloader Toggle ---
         const toggleJd = document.getElementById('toggle-jd');
         if (toggleJd) {
             const savedState = localStorage.getItem('useJD');
             if (savedState !== null) toggleJd.checked = savedState === 'true';
             toggleJd.addEventListener('change', (e) => localStorage.setItem('useJD', e.target.checked));
+        }
+
+        // --- Source Detection & Hydracker Toggle ---
+        try {
+            const statusData = await apiCall('/status');
+            state.currentSource = statusData.source || 'zt';
+            state.hydrackerAvailable = statusData.hydrackerAvailable || false;
+            state.ztAvailable = statusData.ztAvailable || false;
+            updateSourceUI();
+        } catch(e) { console.error('Erreur détection source:', e); }
+
+        const toggleHydracker = document.getElementById('toggle-hydracker');
+        if (toggleHydracker) {
+            // Si Hydracker n'est pas dispo (pas de token), on grise le toggle
+            if (!state.hydrackerAvailable) {
+                toggleHydracker.disabled = true;
+                toggleHydracker.checked = false;
+                const statusEl = document.getElementById('hydracker-status');
+                if (statusEl) statusEl.textContent = '⚠️ Token Hydracker non détecté dans le .env. Le toggle est désactivé. Configurez BASE_URL et DW_API_KEY pour activer cette option.';
+            } else {
+                // Restore saved preference
+                const savedSource = localStorage.getItem('preferHydracker');
+                if (savedSource === 'true') {
+                    toggleHydracker.checked = true;
+                    switchSource('hydracker');
+                }
+            }
+
+            toggleHydracker.addEventListener('change', async (e) => {
+                const newSource = e.target.checked ? 'hydracker' : 'zt';
+                if (newSource === 'hydracker' && !state.hydrackerAvailable) {
+                    e.target.checked = false;
+                    showToast('⚠️ Token Hydracker non configuré !');
+                    return;
+                }
+                localStorage.setItem('preferHydracker', e.target.checked);
+                await switchSource(newSource);
+            });
         }
 
         loadTrending();
@@ -158,23 +200,19 @@ document.addEventListener('DOMContentLoaded', () => {
             radio.addEventListener('change', renderTrending);
         });
 
-
-
-
-        // --- HEARTBEAT : Détection Hydracker Down + Refresh Tendances ---
+        // --- HEARTBEAT : Détection source down + Refresh Tendances ---
         let wasOffline = false;
         const checkSourceStatus = async () => {
             try {
                 const s = await apiCall('/status');
                 updateSiteStatusUI(s.isOffline, s.message);
+                state.currentSource = s.source;
                 
-                // Désactiver/réactiver les éléments interactifs
                 const searchInput = dom('search-input');
                 const searchBtn = dom('btn-search-trigger');
                 if (searchInput) searchInput.disabled = s.isOffline;
                 if (searchBtn) searchBtn.disabled = s.isOffline;
 
-                // Si le site revient en ligne OU si les tendances sont vides → on recharge
                 if (!s.isOffline && (wasOffline || (!state.trendingData.films.length && !state.trendingData.series.length))) {
                     console.log('[Heartbeat] Site source en ligne, rechargement des tendances...');
                     loadTrending();
@@ -186,8 +224,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
-        // Check toutes les 30 secondes
         setInterval(checkSourceStatus, 30000);
+    };
+
+    // --- SOURCE MANAGEMENT ---
+    const updateSourceUI = () => {
+        const label = document.getElementById('source-label');
+        const indicator = document.getElementById('source-indicator');
+        if (label) {
+            label.textContent = state.currentSource === 'hydracker' ? 'Hydracker (Token)' : 'Zone-Telechargement';
+        }
+        if (indicator) {
+            indicator.style.background = state.currentSource === 'hydracker' ? '#f59e0b' : 'var(--success)';
+        }
+    };
+
+    const switchSource = async (newSource) => {
+        try {
+            await apiCall('/set-source', 'POST', { source: newSource });
+            state.currentSource = newSource;
+            updateSourceUI();
+            showToast(`Source: ${newSource === 'hydracker' ? 'Hydracker' : 'Zone-Telechargement'}`);
+            // Reload trending with new source
+            loadTrending();
+        } catch(e) {
+            showToast('Erreur changement source: ' + e.message);
+        }
     };
 
 
@@ -301,17 +363,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.className = 'card';
 
-        const badge = '';
         const posterSrc = proxyImageUrl(movie.image);
+
+        // Build subtitle: quality + lang for ZT, year for Hydracker
+        let subtitle = movie.year || '';
+        if (movie.source === 'zt') {
+            const parts = [];
+            if (movie.quality) parts.push(movie.quality);
+            if (movie.lang) parts.push(movie.lang);
+            subtitle = parts.join(' — ') || '';
+        }
 
         div.innerHTML = `
             <div class="poster-container">
                 <img src="${posterSrc}" loading="lazy" alt="${movie.title}" onerror="this.style.display='none'">
-                ${badge}
             </div>
             <div class="card-info">
                 <div class="card-title">${movie.title}</div>
-                <div class="card-year">${movie.year || ''}</div>
+                <div class="card-year">${subtitle}</div>
             </div>
         `;
         div.addEventListener('click', () => handleSelection(movie));
@@ -382,6 +451,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (grid) grid.innerHTML = '';
             return;
         }
+
+        // ZT requires min 4 characters
+        if (state.currentSource === 'zt' && q.length < 4) {
+            if (grid) grid.innerHTML = '<p style="padding:1rem; opacity:0.7;">Minimum 4 caractères pour la recherche.</p>';
+            return;
+        }
         
         const typeEl = document.querySelector('input[name="search-type"]:checked');
         const type = typeEl ? typeEl.value : 'film';
@@ -444,8 +519,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleSelection = async (movie) => {
         showModal(movie.title, '<div class="loader-wrapper"><div class="loader"></div></div>');
         try {
+            // For ZT source, always use /select-movie with the full page URL
+            // For Hydracker, use /select-trending if it's from the trending endpoint
             let ep = '/select-movie';
-            if (movie.hrefPath && movie.hrefPath.includes('download')) ep = '/select-trending';
+            if (state.currentSource === 'hydracker' && movie.hrefPath && movie.hrefPath.includes('download')) {
+                ep = '/select-trending';
+            }
             const data = await apiCall(ep, 'POST', { hrefPath: movie.hrefPath || '', title: movie.title, type: movie.type });
             renderModalOptions(data, movie.title);
         } catch (e) {
@@ -476,22 +555,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const body = dom('modal-body');
         body.innerHTML = '';
 
-        // --- 1. AFFICHAGE DES SAISONS ---
+        // --- 0. DÉTECTION DU TYPE (Film vs Série) ---
+        // On vérifie si un des labels de saison contient "Saison" ou si les fichiers ont des numéros d'épisodes
+        const hasSaisonLabel = data.seasons && data.seasons.some(s => s.label.toLowerCase().includes('saison'));
+        const hasEpisodes = data.clientOptions && data.clientOptions.some(q => q.episode && !q.episode.toLowerCase().includes('saison complète'));
+        const isActuallySeries = hasSaisonLabel || hasEpisodes;
+
+        // --- 1. AFFICHAGE DES VERSIONS / SAISONS ---
         if (data.seasons && data.seasons.length > 0) {
             const h4 = document.createElement('h4');
-            h4.textContent = "Changer de Saison";
-            h4.style.marginBottom = "10px";
+            h4.textContent = isActuallySeries ? "Saisons disponibles" : "Qualités & Versions";
+            h4.className = "modal-subtitle";
+            h4.style.marginBottom = "12px";
             body.appendChild(h4);
 
             const seasonsContainer = document.createElement('div');
+            seasonsContainer.className = "seasons-grid"; // On utilisera une grid ou flex-wrap
             seasonsContainer.style.display = "flex";
-            seasonsContainer.style.gap = "10px";
-            seasonsContainer.style.overflowX = "auto";
-            seasonsContainer.style.paddingBottom = "10px";
-            seasonsContainer.style.marginBottom = "20px";
+            seasonsContainer.style.gap = "8px";
+            seasonsContainer.style.flexWrap = "wrap";
+            seasonsContainer.style.marginBottom = "24px";
 
             data.seasons.forEach(s => {
-                // 1. Découpage de sécurité au cas où le site source fusionne le texte
                 let labelsToProcess = [];
                 if ((s.label.match(/Saison/ig) || []).length > 1) {
                     labelsToProcess = s.label.split(/(?=Saison\s*\d+)/i).filter(Boolean);
@@ -499,33 +584,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     labelsToProcess = [s.label];
                 }
 
-                labelsToProcess.forEach((cleanLabel, subIndex) => {
+                labelsToProcess.forEach(cleanLabel => {
                     const btn = document.createElement('button');
-                    btn.className = 'season-btn';
-                    btn.style.padding = "8px 16px";
-                    btn.style.background = "var(--bg-card)";
-                    btn.style.border = "1px solid var(--border)";
-                    btn.style.borderRadius = "20px";
-                    btn.style.color = "white";
-                    btn.style.cursor = "pointer";
-                    btn.style.whiteSpace = "nowrap";
-                    btn.style.flexShrink = "0";
-                    btn.style.fontWeight = "600";
-                    btn.style.transition = "all 0.2s ease";
-
-                    // Effets de survol (Hover)
-                    btn.onmouseover = () => {
-                        btn.style.background = "var(--primary)";
-                        btn.style.borderColor = "var(--primary)";
-                    };
-                    btn.onmouseout = () => {
-                        btn.style.background = "var(--bg-card)";
-                        btn.style.borderColor = "var(--border)";
-                    };
-
-
+                    btn.className = 'quality-pill'; // Nouveau style
                     btn.innerHTML = `<span>${cleanLabel.trim()}</span>`;
-
+                    
                     btn.onclick = async () => {
                         body.innerHTML = '<div class="loader-wrapper"><div class="loader"></div></div>';
                         try {
@@ -540,16 +603,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
             body.appendChild(seasonsContainer);
+            
+            // Si c'est un film et qu'on a des "seasons" (qui sont des qualités), 
+            // l'utilisateur veut peut-être s'arrêter là et choisir une qualité d'abord.
+            // Mais on affiche quand même les fichiers de la page actuelle en dessous.
+            const sep = document.createElement('hr');
+            sep.style.opacity = "0.1";
+            sep.style.margin = "20px 0";
+            body.appendChild(sep);
         }
 
-        // --- 2. AFFICHAGE DES FICHIERS ---
+        // --- 2. GESTION DES QUALITÉS (Si multiples sur la même page) ---
+        const uniqueQualities = [...new Set(data.clientOptions.map(q => q.quality))];
+        
+        // Si on a plusieurs qualités sur la même page (ex: 720p et 1080p mélangés)
+        // On pourrait ajouter un filtre ici, mais pour ZT c'est rare.
+        // On va plutôt se concentrer sur l'affichage clair des fichiers.
+
         if (data.clientOptions && data.clientOptions.length) {
             const h4 = document.createElement('h4');
-            h4.textContent = "Fichiers Disponibles"; h4.className = "modal-subtitle";
+            h4.textContent = "Fichiers Disponibles"; 
+            h4.className = "modal-subtitle";
+            h4.style.marginTop = "10px";
             body.appendChild(h4);
 
-
-            const MAX_FILM_SIZE_MB = 15360; // Limite fixée à 15 Go
+            const MAX_FILM_SIZE_MB = 15360; // 15 Go
 
             const sortedOptions = data.clientOptions.map(q => {
                 const isFullSeason = q.episode && q.episode.toLowerCase().includes('saison complète') ? 1 : 0;
@@ -560,39 +638,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     isFullSeason: isFullSeason
                 };
             })
-                .filter(q => {
-                    if (!q.episode) {
-                        return q.sizeVal <= MAX_FILM_SIZE_MB;
-                    }
-                    return true;
-                })
-                .sort((a, b) => {
-                    if (a.isFullSeason !== b.isFullSeason) return b.isFullSeason - a.isFullSeason;
-                    if (a.rank !== b.rank) return a.rank - b.rank;
-                    return a.sizeVal - b.sizeVal;
-                });
+            .filter(q => {
+                if (!isActuallySeries) return q.sizeVal <= MAX_FILM_SIZE_MB;
+                return true;
+            })
+            .sort((a, b) => {
+                if (a.isFullSeason !== b.isFullSeason) return b.isFullSeason - a.isFullSeason;
+                if (a.rank !== b.rank) return a.rank - b.rank;
+                return a.sizeVal - b.sizeVal;
+            });
 
-            // Sécurité : Si tous les fichiers sont filtrés, on prévient l'utilisateur
             if (data.clientOptions.length > 0 && sortedOptions.length === 0) {
                 const info = document.createElement('p');
-                info.style.color = "var(--text-sec)";
-                info.style.textAlign = "center";
-                info.style.padding = "1rem";
-                info.textContent = "🚫 Aucun fichier trouvé sous la limite de taille (1 Go pour les films).";
+                info.className = "empty-msg";
+                info.textContent = "🚫 Aucun fichier trouvé sous la limite de taille.";
                 body.appendChild(info);
                 return;
             }
 
+            const filesContainer = document.createElement('div');
+            filesContainer.className = "files-list";
+
             sortedOptions.forEach(q => {
                 const btn = document.createElement('button');
-
                 let specialClass = '';
                 let icon = '';
-                let titleText = q.episode ? (q.isFullSeason ? q.episode : 'Ep. ' + q.episode) : 'Film';
+                let titleText = q.episode ? (q.isFullSeason ? q.episode : 'Ep. ' + q.episode) : 'Film / Vidéo';
 
                 if (q.isFullSeason) {
-                    specialClass = 'quality-gold';
-                    icon = '📦';
+                    specialClass = 'quality-gold'; icon = '📦';
                 } else if (q.rank === 1) {
                     specialClass = 'quality-gold'; icon = '⭐';
                 } else if (q.rank === 2) {
@@ -600,16 +674,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 btn.className = `option-btn ${specialClass}`;
-
                 btn.innerHTML = `
                     <div class="opt-left">
                         <div class="opt-title">
-                            ${icon} ${titleText}
+                            <span class="opt-icon-text">${icon}</span>
+                            <span class="opt-name">${titleText}</span>
                             <span class="quality-tag">${q.quality}</span>
                         </div>
                         <div class="opt-meta">${q.size || 'Taille inconnue'}</div>
                     </div>
-                    <i data-lucide="download" class="opt-icon"></i>
+                    <div class="opt-right">
+                        <i data-lucide="download" class="opt-icon"></i>
+                    </div>
                 `;
 
                 btn.onclick = async () => {
@@ -625,12 +701,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             document.querySelector('.nav-links li[data-target="section-downloads"]').click();
                         } else {
                             showModal('Lien Direct Récupéré', `
-                                <div style="text-align:center; padding: 20px;">
-                                    <p style="margin-bottom: 15px; color: var(--text-sec);">Voici votre lien 1fichier :</p>
-                                    <input type="text" value="${result.link}" readonly style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: #fff; margin-bottom: 15px;" id="direct-link-input">
-                                    <div style="display:flex; gap: 10px; justify-content: center;">
-                                        <button class="btn-primary" onclick="document.getElementById('direct-link-input').select(); document.execCommand('copy');">Copier</button>
-                                        <a href="${result.link}" target="_blank" class="btn-success" style="text-decoration:none; line-height: 20px; padding: 10px 20px; border-radius: 8px;">Ouvrir</a>
+                                <div class="direct-link-box">
+                                    <p>Voici votre lien 1fichier :</p>
+                                    <input type="text" value="${result.link}" readonly id="direct-link-input">
+                                    <div class="btn-group">
+                                        <button class="btn-primary" onclick="document.getElementById('direct-link-input').select(); document.execCommand('copy'); showToast('Copié !')">Copier</button>
+                                        <a href="${result.link}" target="_blank" class="btn-success">Ouvrir</a>
                                     </div>
                                 </div>
                             `);
@@ -641,8 +717,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         show(dom('modal-overlay'));
                     }
                 };
-                body.appendChild(btn);
+                filesContainer.appendChild(btn);
             });
+            body.appendChild(filesContainer);
         }
         lucide.createIcons();
     };
@@ -657,10 +734,6 @@ document.addEventListener('DOMContentLoaded', () => {
     dom('modal-close').onclick = () => {
         hide(dom('modal-overlay'));
     };
-
-    // (Logique Manuelle supprimée car inutile)
-
-
 
     dom('btn-logout').onclick = async () => {
         await apiCall('/logout', 'POST');
