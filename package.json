@@ -1,10 +1,13 @@
 {
   "name": "hydrhacked",
   "version": "1.0.0",
+  "type": "module",
   "description": "Hydr'Hacked - API Proxy and Frontend",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node dist/server.js",
+    "build": "tsc",
+    "dev": "tsx server.ts"
   },
   "dependencies": {
     "cookie-parser": "^1.4.6",
@@ -16,5 +19,15 @@
     "express-session": "^1.18.0",
     "helmet": "^7.1.0",
     "session-file-store": "^1.5.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
+    "@types/node": "^25.6.1",
+    "@types/session-file-store": "^1.2.6",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   }
 }

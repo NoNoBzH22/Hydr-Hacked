@@ -142,18 +142,13 @@
                 </div>
 
                 <div class="form-card" style="max-width: 500px; margin: 0 auto 1.5rem auto;">
-                    <h3 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Source de Recherche</h3>
-                    <div id="source-status" style="display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                        <div id="source-indicator" style="width: 10px; height: 10px; border-radius: 50%; background: var(--success);"></div>
-                        <span id="source-label" style="font-weight: 600;">Zone-Telechargement</span>
-                    </div>
-                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-                        <span style="font-weight: 600;">Utiliser mon token Hydracker</span>
-                        <input type="checkbox" id="toggle-hydracker" style="width: 20px; height: 20px;">
-                    </label>
-                    <p id="hydracker-status" style="font-size: 0.85rem; color: var(--text-sec); margin-top: 10px;">
-                        Par défaut, la recherche utilise Zone-Telechargement (aucun token requis). Activez cette option si vous avez configuré votre token Hydracker dans le .env.
+                    <h3 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Sources de Recherche</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-sec); margin-bottom: 1rem;">
+                        Sélectionnez les sources à utiliser pour la recherche et les tendances.
                     </p>
+                    <div id="sources-container" style="display: flex; flex-direction: column; gap: 10px;">
+                        <!-- Les sources seront injectées ici par JS -->
+                    </div>
                 </div>
                 
                 <div class="form-card" style="max-width: 500px; margin: 0 auto;">

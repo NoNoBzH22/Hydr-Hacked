@@ -61,9 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const state = {
         downloadInterval: null,
         trendingData: { films: [], series: [] },
-        currentSource: 'zt', // 'zt' or 'hydracker'
-        hydrackerAvailable: false,
-        ztAvailable: false,
+        activeSources: [],
+        availableSources: [], // Dynamically populated from /status
     };
 
     // --- GESTION INTELLIGENTE DES BOUCLES ---
@@ -156,43 +155,13 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleJd.addEventListener('change', (e) => localStorage.setItem('useJD', e.target.checked));
         }
 
-        // --- Source Detection & Hydracker Toggle ---
+        // --- Source Detection & Dynamic Options ---
         try {
             const statusData = await apiCall('/status');
-            state.currentSource = statusData.source || 'zt';
-            state.hydrackerAvailable = statusData.hydrackerAvailable || false;
-            state.ztAvailable = statusData.ztAvailable || false;
-            updateSourceUI();
+            state.activeSources = statusData.activeSources || [];
+            state.availableSources = statusData.availableSources || [];
+            renderSourcesUI();
         } catch(e) { console.error('Erreur détection source:', e); }
-
-        const toggleHydracker = document.getElementById('toggle-hydracker');
-        if (toggleHydracker) {
-            // Si Hydracker n'est pas dispo (pas de token), on grise le toggle
-            if (!state.hydrackerAvailable) {
-                toggleHydracker.disabled = true;
-                toggleHydracker.checked = false;
-                const statusEl = document.getElementById('hydracker-status');
-                if (statusEl) statusEl.textContent = '⚠️ Token Hydracker non détecté dans le .env. Le toggle est désactivé. Configurez BASE_URL et DW_API_KEY pour activer cette option.';
-            } else {
-                // Restore saved preference
-                const savedSource = localStorage.getItem('preferHydracker');
-                if (savedSource === 'true') {
-                    toggleHydracker.checked = true;
-                    switchSource('hydracker');
-                }
-            }
-
-            toggleHydracker.addEventListener('change', async (e) => {
-                const newSource = e.target.checked ? 'hydracker' : 'zt';
-                if (newSource === 'hydracker' && !state.hydrackerAvailable) {
-                    e.target.checked = false;
-                    showToast('⚠️ Token Hydracker non configuré !');
-                    return;
-                }
-                localStorage.setItem('preferHydracker', e.target.checked);
-                await switchSource(newSource);
-            });
-        }
 
         loadTrending();
         lucide.createIcons();
@@ -206,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const s = await apiCall('/status');
                 updateSiteStatusUI(s.isOffline, s.message);
-                state.currentSource = s.source;
+                state.activeSources = s.activeSources || [];
                 
                 const searchInput = dom('search-input');
                 const searchBtn = dom('btn-search-trigger');
@@ -228,29 +197,58 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- SOURCE MANAGEMENT ---
-    const updateSourceUI = () => {
-        const label = document.getElementById('source-label');
-        const indicator = document.getElementById('source-indicator');
-        if (label) {
-            label.textContent = state.currentSource === 'hydracker' ? 'Hydracker (Token)' : 'Zone-Telechargement';
-        }
-        if (indicator) {
-            indicator.style.background = state.currentSource === 'hydracker' ? '#f59e0b' : 'var(--success)';
-        }
-    };
+    function renderSourcesUI() {
+        const container = dom('sources-container');
+        if (!container) return;
 
-    const switchSource = async (newSource) => {
+        container.innerHTML = '';
+
+        state.availableSources.forEach(sourceName => {
+            const label = document.createElement('label');
+            label.style = "display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;";
+            label.onmouseover = () => label.style.background = "rgba(255,255,255,0.08)";
+            label.onmouseout = () => label.style.background = "rgba(255,255,255,0.05)";
+
+            const isActive = state.activeSources.includes(sourceName);
+            const displayName = sourceName === 'zt' ? 'Zone-Téléchargement' : 
+                                sourceName === 'hydracker' ? 'Hydracker (Token)' : 
+                                sourceName.toUpperCase();
+
+            label.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 10px; height: 10px; border-radius: 50%; background: ${isActive ? 'var(--success)' : '#4b5563'};"></div>
+                    <span style="font-weight: 600;">${displayName}</span>
+                </div>
+                <input type="checkbox" value="${sourceName}" ${isActive ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer;">
+            `;
+
+            const checkbox = label.querySelector('input');
+            checkbox.addEventListener('change', async () => {
+                let newActiveSources = [...state.activeSources];
+                if (checkbox.checked) {
+                    if (!newActiveSources.includes(sourceName)) newActiveSources.push(sourceName);
+                } else {
+                    newActiveSources = newActiveSources.filter(s => s !== sourceName);
+                }
+                await updateActiveSources(newActiveSources);
+            });
+
+            container.appendChild(label);
+        });
+    }
+
+    async function updateActiveSources(sources) {
         try {
-            await apiCall('/set-source', 'POST', { source: newSource });
-            state.currentSource = newSource;
-            updateSourceUI();
-            showToast(`Source: ${newSource === 'hydracker' ? 'Hydracker' : 'Zone-Telechargement'}`);
-            // Reload trending with new source
+            const res = await apiCall('/set-sources', 'POST', { sources });
+            state.activeSources = res.activeSources;
+            renderSourcesUI();
+            showToast('Sources mises à jour');
             loadTrending();
         } catch(e) {
-            showToast('Erreur changement source: ' + e.message);
+            showToast('Erreur sources: ' + e.message);
+            renderSourcesUI(); // Revert UI
         }
-    };
+    }
 
 
 
@@ -377,6 +375,9 @@ document.addEventListener('DOMContentLoaded', () => {
         div.innerHTML = `
             <div class="poster-container">
                 <img src="${posterSrc}" loading="lazy" alt="${movie.title}" onerror="this.style.display='none'">
+                <div class="source-badge" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);">
+                    ${movie.source}
+                </div>
             </div>
             <div class="card-info">
                 <div class="card-title">${movie.title}</div>
@@ -397,7 +398,22 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = '';
 
         if (!itemsToDisplay || !itemsToDisplay.length) {
-            grid.innerHTML = '<p style="padding:1rem">Aucune tendance trouvée.</p>';
+            if (dom('offline-banner') && dom('offline-banner').textContent.includes('Aucune source configurée')) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 4rem 2rem; color: var(--text-sec);">
+                        <i data-lucide="settings-2" style="width: 48px; height: 48px; margin-bottom: 1.5rem; opacity: 0.5;"></i>
+                        <h3 style="color: white; margin-bottom: 0.5rem;">Aucune source configurée</h3>
+                        <p style="margin-bottom: 2rem; max-width: 400px; margin-left: auto; margin-right: auto;">
+                            Pour afficher du contenu, activez au moins une source dans les paramètres. ZT est recommandé par défaut.
+                        </p>
+                        <button class="btn-primary" onclick="document.querySelector('[data-target=\'section-settings\']').click()" style="padding: 10px 24px;">
+                            Aller aux Paramètres
+                        </button>
+                    </div>`;
+                lucide.createIcons();
+            } else {
+                grid.innerHTML = '<p style="padding:1rem">Aucune tendance trouvée.</p>';
+            }
             return;
         }
 
@@ -453,8 +469,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // ZT requires min 4 characters
-        if (state.currentSource === 'zt' && q.length < 4) {
-            if (grid) grid.innerHTML = '<p style="padding:1rem; opacity:0.7;">Minimum 4 caractères pour la recherche.</p>';
+        if (state.activeSources.includes('zt') && state.activeSources.length === 1 && q.length < 4) {
+            if (grid) grid.innerHTML = '<p style="padding:1rem; opacity:0.7;">Minimum 4 caractères pour la recherche sur ZT.</p>';
             return;
         }
         
@@ -470,7 +486,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (grid) {
                 grid.innerHTML = '';
-                if (!res || !res.length) grid.innerHTML = '<p style="padding:1rem; opacity:0.7;">Aucun résultat.</p>';
+                if (!res || !res.length) {
+                    if (dom('offline-banner') && dom('offline-banner').textContent.includes('Aucune source configurée')) {
+                        grid.innerHTML = '<p style="padding:1rem; opacity:0.7;">Veuillez configurer une source dans les paramètres.</p>';
+                    } else {
+                        grid.innerHTML = '<p style="padding:1rem; opacity:0.7;">Aucun résultat.</p>';
+                    }
+                }
                 else res.forEach(m => grid.appendChild(createCard(m)));
             }
         } catch (e) {
@@ -522,10 +544,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // For ZT source, always use /select-movie with the full page URL
             // For Hydracker, use /select-trending if it's from the trending endpoint
             let ep = '/select-movie';
-            if (state.currentSource === 'hydracker' && movie.hrefPath && movie.hrefPath.includes('download')) {
+            if (movie.source === 'hydracker' && movie.hrefPath && movie.hrefPath.includes('download')) {
                 ep = '/select-trending';
             }
-            const data = await apiCall(ep, 'POST', { hrefPath: movie.hrefPath || '', title: movie.title, type: movie.type });
+            const data = await apiCall(ep, 'POST', { hrefPath: movie.hrefPath || '', title: movie.title, type: movie.type, source: movie.source });
             renderModalOptions(data, movie.title);
         } catch (e) {
             dom('modal-body').innerHTML = `<p style="color:red">${e.message}</p>`;

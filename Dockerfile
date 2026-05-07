@@ -1,11 +1,17 @@
+FROM node:22-slim AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
 FROM node:22-slim
 WORKDIR /app
-# Installation des dépendances
 COPY package*.json ./
 RUN npm install --production
-# Copie du code source
-COPY . .
-# On expose le port défini dans le .env (ou 3067 par défaut)
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/views ./views
+COPY --from=builder /app/public ./public
+
 EXPOSE 3067
-# Lancement direct de Node.js
-CMD ["node", "server.js"]
+CMD ["node", "dist/server.js"]
