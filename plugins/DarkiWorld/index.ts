@@ -31,8 +31,14 @@ export class DarkiWorldAPI implements ISource {
 
     async search(query: string, mediaType: MediaType = 'movie'): Promise<SearchResult[]> {
         const data = await fetchSearch(query);
-        if (!data) return [];
-        return parseSearchResults(data, mediaType);
+        if (!data) {
+            console.error('[DW] search: fetchSearch a retourné null pour', query);
+            return [];
+        }
+        const totalRaw = (data.results || []).length;
+        const parsed = parseSearchResults(data, mediaType);
+        console.log(`[DW] search "${query}" (${mediaType}): ${totalRaw} résultats bruts → ${parsed.length} après filtre`);
+        return parsed;
     }
 
     async getTrending(mediaType: MediaType): Promise<SearchResult[]> {

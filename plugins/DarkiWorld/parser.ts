@@ -22,16 +22,19 @@ export function formatSize(bytes: number): string {
 
 export function parseSearchResults(data: any, mediaType: MediaType): SearchResult[] {
     const EXCLUDED_TYPES = ['games', 'music', 'app', 'ebook', 'emulation'];
+    // Accepte à la fois les entrées avec model_type === 'title' et celles sans ce champ
     const results = (data.results || []).filter((r: any) =>
-        r.model_type === 'title' && !EXCLUDED_TYPES.includes((r.type || '').toLowerCase())
+        (!r.model_type || r.model_type === 'title') &&
+        !EXCLUDED_TYPES.includes((r.type || '').toLowerCase())
     );
 
     const filtered = results.filter((r: any) => {
         const rType = (r.type || (r.is_series ? 'series' : 'movie')).toLowerCase();
         if (mediaType === 'movie') {
-            return rType === 'movie' || rType === 'animes' || rType === 'doc' || rType === 'other';
+            return rType === 'movie' || rType === 'animes' || rType === 'anime' || rType === 'doc' || rType === 'other';
         }
-        return rType === 'series' || rType === 'serie' || rType === 'animes' || rType === 'doc' || rType === 'other';
+        // Pour les séries
+        return rType === 'series' || rType === 'serie' || rType === 'animes' || rType === 'anime' || rType === 'doc' || rType === 'other';
     });
 
     return filtered.map((r: any) => ({

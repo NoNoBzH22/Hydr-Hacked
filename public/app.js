@@ -365,28 +365,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Build subtitle: quality + lang for ZT, year for Hydracker
         let subtitle = movie.year || '';
+        let cleanedTitle = movie.title;
+
+        // Clean ZT titles: "Show Name - Saison X [Quality]" -> "Show Name - Saison X"
         if (movie.source === 'zt') {
             const parts = [];
+            
+            // Extract quality info from title if present: "Title [1080p]" -> "Title"
+            const titleQualityMatch = cleanedTitle.match(/(.*)\s+\[([^\]]+)\]$/);
+            if (titleQualityMatch) {
+                cleanedTitle = titleQualityMatch[1].trim();
+                const qualityFromTitle = titleQualityMatch[2].trim();
+                if (!movie.quality) movie.quality = qualityFromTitle;
+            }
+
             if (movie.quality) parts.push(movie.quality);
             if (movie.lang) parts.push(movie.lang);
             subtitle = parts.join(' — ') || '';
         }
 
+        const typeBadge = movie.type === 'series' || movie.type === 'anime' ? `<span class="type-badge">${movie.type === 'anime' ? 'Anime' : 'Série'}</span>` : '';
+
         div.innerHTML = `
             <div class="poster-container">
-                <img src="${posterSrc}" loading="lazy" alt="${movie.title}" onerror="this.style.display='none'">
+                <img src="${posterSrc}" loading="lazy" alt="${cleanedTitle}" onerror="this.style.display='none'">
                 <div class="source-badge" style="position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.7); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);">
                     ${movie.source}
                 </div>
             </div>
             <div class="card-info">
-                <div class="card-title">${movie.title}</div>
-                <div class="card-year">${subtitle}</div>
+                <div class="card-title">${cleanedTitle}</div>
+                <div class="card-year">${typeBadge} ${subtitle}</div>
             </div>
         `;
         div.addEventListener('click', () => handleSelection(movie));
         return div;
     };
+
 
     const renderTrending = () => {
         const grid = dom('trending-grid');
@@ -556,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function parseSizeToMB(sizeStr) {
         if (!sizeStr || sizeStr === 'N/A') return 0;
-        const match = sizeStr.match(/([\d.,]+)\s*(gb|mb|ko|kb|tb)/i);
+        const match = sizeStr.match(/([\d.,]+)\s*(gb|go|mb|mo|ko|kb|tb|to)/i);
         if (!match) return 0;
         let size = parseFloat(match[1].replace(',', '.'));
         const unit = match[2].toLowerCase();
@@ -577,173 +592,301 @@ document.addEventListener('DOMContentLoaded', () => {
         const body = dom('modal-body');
         body.innerHTML = '';
 
-        // --- 0. DÉTECTION DU TYPE (Film vs Série) ---
-        // On vérifie si un des labels de saison contient "Saison" ou si les fichiers ont des numéros d'épisodes
+        // --- 0. TYPE DETECTION ---
         const hasSaisonLabel = data.seasons && data.seasons.some(s => s.label.toLowerCase().includes('saison'));
-        const hasEpisodes = data.clientOptions && data.clientOptions.some(q => q.episode && !q.episode.toLowerCase().includes('saison complète'));
-        const isActuallySeries = hasSaisonLabel || hasEpisodes;
+        const hasNumericEpisodes = data.clientOptions && data.clientOptions.some(q => {
+            if (!q.episode) return false;
+            const lowEp = q.episode.toLowerCase();
+            if (lowEp.includes('saison complète') || lowEp.includes('intégrale') || lowEp.includes('pack')) return false;
+            // Si c'est un nombre ou contient "Ep", c'est une série
+            return /^\d+$/.test(q.episode) || lowEp.includes('ep');
+        });
+        const isActuallySeries = hasSaisonLabel || hasNumericEpisodes;
 
-        // --- 1. AFFICHAGE DES VERSIONS / SAISONS ---
+
+        // --- 1. SAISONS / VERSIONS ---
         if (data.seasons && data.seasons.length > 0) {
             const h4 = document.createElement('h4');
             h4.textContent = isActuallySeries ? "Saisons disponibles" : "Qualités & Versions";
             h4.className = "modal-subtitle";
-            h4.style.marginBottom = "12px";
             body.appendChild(h4);
 
-            const seasonsContainer = document.createElement('div');
-            seasonsContainer.className = "seasons-grid"; // On utilisera une grid ou flex-wrap
-            seasonsContainer.style.display = "flex";
-            seasonsContainer.style.gap = "8px";
-            seasonsContainer.style.flexWrap = "wrap";
-            seasonsContainer.style.marginBottom = "24px";
-
+            const groupedSeasons = new Map();
+            
+            // Flatten and collect all season options
             data.seasons.forEach(s => {
                 let labelsToProcess = [];
+                // Handle cases where ZT might combine multiple seasons in one label
                 if ((s.label.match(/Saison/ig) || []).length > 1) {
                     labelsToProcess = s.label.split(/(?=Saison\s*\d+)/i).filter(Boolean);
                 } else {
                     labelsToProcess = [s.label];
                 }
 
-                labelsToProcess.forEach(cleanLabel => {
+                labelsToProcess.forEach(label => {
+                    const cleanLabel = label.trim();
+                    // Detect season group: "Saison 1 HDTV (FRENCH)" -> group "Saison 1", sublabel "HDTV (FRENCH)"
+                    const seasonMatch = cleanLabel.match(/^(Saison\s*\d+)(.*)$/i);
+                    let groupName = "Versions";
+                    let subLabel = cleanLabel;
+
+                    if (seasonMatch) {
+                        groupName = seasonMatch[1].trim();
+                        subLabel = seasonMatch[2].trim() || "Standard";
+                    } else if (cleanLabel.toLowerCase().includes('intégrale')) {
+                        groupName = "Intégrales";
+                    } else if (cleanLabel.toLowerCase().includes('saison')) {
+                        // Cas particulier comme "Saisons 1 à 5"
+                        groupName = cleanLabel;
+                        subLabel = "Pack";
+                    }
+
+
+                    if (!groupedSeasons.has(groupName)) groupedSeasons.set(groupName, []);
+                    groupedSeasons.get(groupName).push({ label: subLabel, fullLabel: cleanLabel, value: s.value });
+                });
+            });
+
+            // Render grouped seasons
+            groupedSeasons.forEach((options, groupName) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = "season-group";
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = "season-group-title";
+                titleDiv.textContent = groupName;
+                groupDiv.appendChild(titleDiv);
+
+                const grid = document.createElement('div');
+                grid.className = "seasons-grid";
+
+                options.forEach(opt => {
                     const btn = document.createElement('button');
-                    btn.className = 'quality-pill'; // Nouveau style
-                    btn.innerHTML = `<span>${cleanLabel.trim()}</span>`;
-                    
+                    btn.className = 'quality-pill';
+                    btn.innerHTML = `<span>${opt.label}</span>`;
+                    btn.title = opt.fullLabel;
+
                     btn.onclick = async () => {
                         body.innerHTML = '<div class="loader-wrapper"><div class="loader"></div></div>';
                         try {
-                            const res = await apiCall('/select-season', 'POST', { seasonValue: s.value });
-                            res.seasons = data.seasons;
-                            renderModalOptions(res, currentTitle);
+                            const res = await apiCall('/select-season', 'POST', { seasonValue: opt.value });
+                            res.seasons = data.seasons; // Keep seasons list
+                            
+                            // Update modal title to reflect new season
+                            const baseTitle = currentTitle.split(' - ')[0];
+                            const newTitle = (groupName.startsWith('Saison') || groupName.startsWith('Intégrale')) 
+                                ? `${baseTitle} - ${groupName}` 
+                                : currentTitle;
+                            
+                            const titleEl = dom('modal-title');
+                            if (titleEl) titleEl.textContent = newTitle;
+                            console.log(`[Modal] Titre mis à jour : ${newTitle}`);
+
+                            
+                            renderModalOptions(res, newTitle);
                         } catch (e) {
                             body.innerHTML = `<p style="color:red; padding:1rem;">Erreur: ${e.message}</p>`;
                         }
                     };
-                    seasonsContainer.appendChild(btn);
+
+                    grid.appendChild(btn);
                 });
+
+                groupDiv.appendChild(grid);
+                body.appendChild(groupDiv);
             });
-            body.appendChild(seasonsContainer);
-            
-            // Si c'est un film et qu'on a des "seasons" (qui sont des qualités), 
-            // l'utilisateur veut peut-être s'arrêter là et choisir une qualité d'abord.
-            // Mais on affiche quand même les fichiers de la page actuelle en dessous.
+
             const sep = document.createElement('hr');
-            sep.style.opacity = "0.1";
-            sep.style.margin = "20px 0";
+            sep.className = 'modal-sep';
             body.appendChild(sep);
         }
 
-        // --- 2. GESTION DES QUALITÉS (Si multiples sur la même page) ---
-        const uniqueQualities = [...new Set(data.clientOptions.map(q => q.quality))];
-        
-        // Si on a plusieurs qualités sur la même page (ex: 720p et 1080p mélangés)
-        // On pourrait ajouter un filtre ici, mais pour ZT c'est rare.
-        // On va plutôt se concentrer sur l'affichage clair des fichiers.
 
-        if (data.clientOptions && data.clientOptions.length) {
-            const h4 = document.createElement('h4');
-            h4.textContent = "Fichiers Disponibles"; 
-            h4.className = "modal-subtitle";
-            h4.style.marginTop = "10px";
-            body.appendChild(h4);
+        // --- 2. FILES ---
+        if (!data.clientOptions || !data.clientOptions.length) {
+            body.innerHTML += '<p class="empty-msg">Aucun fichier disponible.</p>';
+            return;
+        }
 
-            const MAX_FILM_SIZE_MB = 15360; // 15 Go
+        const MAX_FILM_SIZE_MB = 15360;
 
-            const sortedOptions = data.clientOptions.map(q => {
-                const isFullSeason = q.episode && q.episode.toLowerCase().includes('saison complète') ? 1 : 0;
-                return {
-                    ...q,
-                    sizeVal: parseSizeToMB(q.size),
-                    rank: getQualityRank(q.quality),
-                    isFullSeason: isFullSeason
-                };
-            })
-            .filter(q => {
-                if (!isActuallySeries) return q.sizeVal <= MAX_FILM_SIZE_MB;
-                return true;
-            })
-            .sort((a, b) => {
-                if (a.isFullSeason !== b.isFullSeason) return b.isFullSeason - a.isFullSeason;
-                if (a.rank !== b.rank) return a.rank - b.rank;
-                return a.sizeVal - b.sizeVal;
-            });
+        const enriched = data.clientOptions.map(q => {
+            const lowEp = q.episode ? q.episode.toLowerCase() : '';
+            const isFullSeason = lowEp.includes('saison complète') || lowEp.includes('intégrale') || lowEp.includes('pack') ? 1 : 0;
+            return {
+                ...q,
+                sizeVal: parseSizeToMB(q.size),
+                rank: getQualityRank(q.quality),
+                isFullSeason
+            };
+        })
+.filter(q => {
+            if (!isActuallySeries) return q.sizeVal <= MAX_FILM_SIZE_MB;
+            return true;
+        }).sort((a, b) => {
+            if (a.isFullSeason !== b.isFullSeason) return b.isFullSeason - a.isFullSeason;
+            if (a.rank !== b.rank) return a.rank - b.rank;
+            return a.sizeVal - b.sizeVal;
+        });
 
-            if (data.clientOptions.length > 0 && sortedOptions.length === 0) {
-                const info = document.createElement('p');
-                info.className = "empty-msg";
-                info.textContent = "🚫 Aucun fichier trouvé sous la limite de taille.";
-                body.appendChild(info);
+        if (enriched.length === 0) {
+            body.innerHTML += '<p class="empty-msg">🚫 Aucun fichier trouvé sous la limite de taille.</p>';
+            return;
+        }
+
+        // --- 2a. BUILD VERSION TABS ---
+        // Gather unique versions from quality field
+        const allVersions = [...new Set(enriched.map(q => q.quality || 'Inconnu'))];
+
+        let activeVersion = allVersions[0];
+
+        const h4files = document.createElement('h4');
+        h4files.textContent = "Fichiers Disponibles";
+        h4files.className = "modal-subtitle";
+        body.appendChild(h4files);
+
+        // Version filter tabs (only if >1 version)
+        const versionTabsWrap = document.createElement('div');
+        versionTabsWrap.className = 'version-tabs';
+        body.appendChild(versionTabsWrap);
+
+        const filesContainer = document.createElement('div');
+        filesContainer.className = 'files-list';
+        body.appendChild(filesContainer);
+
+        const renderFiles = (version) => {
+            filesContainer.innerHTML = '';
+            const toShow = allVersions.length > 1
+                ? enriched.filter(q => (q.quality || 'Inconnu') === version)
+                : enriched;
+
+            if (toShow.length === 0) {
+                filesContainer.innerHTML = '<p class="empty-msg">Aucun fichier pour cette version.</p>';
                 return;
             }
 
-            const filesContainer = document.createElement('div');
-            filesContainer.className = "files-list";
-
-            sortedOptions.forEach(q => {
-                const btn = document.createElement('button');
-                let specialClass = '';
-                let icon = '';
-                let titleText = q.episode ? (q.isFullSeason ? q.episode : 'Ep. ' + q.episode) : 'Film / Vidéo';
-
-                if (q.isFullSeason) {
-                    specialClass = 'quality-gold'; icon = '📦';
-                } else if (q.rank === 1) {
-                    specialClass = 'quality-gold'; icon = '⭐';
-                } else if (q.rank === 2) {
-                    specialClass = 'quality-blue'; icon = '✨';
-                }
-
-                btn.className = `option-btn ${specialClass}`;
-                btn.innerHTML = `
-                    <div class="opt-left">
-                        <div class="opt-title">
-                            <span class="opt-icon-text">${icon}</span>
-                            <span class="opt-name">${titleText}</span>
-                            <span class="quality-tag">${q.quality}</span>
-                        </div>
-                        <div class="opt-meta">${q.size || 'Taille inconnue'}</div>
-                    </div>
-                    <div class="opt-right">
-                        <i data-lucide="download" class="opt-icon"></i>
-                    </div>
-                `;
-
-                btn.onclick = async () => {
-                    hide(dom('modal-overlay'));
-                    toggleBlockingLoader(true, "Récupération du lien...");
-                    try {
-                        const useJD = document.getElementById('toggle-jd') ? document.getElementById('toggle-jd').checked : true;
-                        const result = await apiCall('/get-link', 'POST', { chosenId: q.id, useJD });
-                        toggleBlockingLoader(false);
-                        
-                        if (useJD) {
-                            showToast('Lien envoyé à JDownloader !');
-                            document.querySelector('.nav-links li[data-target="section-downloads"]').click();
-                        } else {
-                            showModal('Lien Direct Récupéré', `
-                                <div class="direct-link-box">
-                                    <p>Voici votre lien 1fichier :</p>
-                                    <input type="text" value="${result.link}" readonly id="direct-link-input">
-                                    <div class="btn-group">
-                                        <button class="btn-primary" onclick="document.getElementById('direct-link-input').select(); document.execCommand('copy'); showToast('Copié !')">Copier</button>
-                                        <a href="${result.link}" target="_blank" class="btn-success">Ouvrir</a>
-                                    </div>
-                                </div>
-                            `);
-                        }
-                    } catch (e) {
-                        toggleBlockingLoader(false);
-                        showToast("Erreur: " + e.message);
-                        show(dom('modal-overlay'));
-                    }
-                };
-                filesContainer.appendChild(btn);
+            // Group by host
+            const hostGroups = new Map();
+            toShow.forEach(q => {
+                const hostKey = q.host || 'inconnu';
+                if (!hostGroups.has(hostKey)) hostGroups.set(hostKey, []);
+                hostGroups.get(hostKey).push(q);
             });
-            body.appendChild(filesContainer);
+
+            hostGroups.forEach((items, hostName) => {
+                // Host Header
+                const hostHeader = document.createElement('div');
+                hostHeader.className = "season-group-title";
+                hostHeader.style.marginTop = "1rem";
+                
+                // Friendly host name
+                const hostDisplay = hostName
+                    .replace(/\.(png|jpg|webp|gif)$/i, '')
+                    .replace(/[-_]/g, ' ')
+                    .toUpperCase();
+                
+                hostHeader.textContent = hostDisplay;
+                filesContainer.appendChild(hostHeader);
+
+                // For series, we might have many episodes. For movies, usually just mirrors.
+                // We'll use a grid for series episodes to save space.
+                const itemsGrid = document.createElement('div');
+                itemsGrid.className = isActuallySeries ? "seasons-grid" : "files-list";
+                filesContainer.appendChild(itemsGrid);
+
+                items.forEach((q, idx) => {
+                    const btn = document.createElement('button');
+                    let specialClass = '';
+                    let rankIcon = '';
+                    
+                    if (q.isFullSeason) { specialClass = 'quality-gold'; rankIcon = '📦'; }
+                    else if (q.rank === 1) { specialClass = 'quality-gold'; rankIcon = '⭐'; }
+                    else if (q.rank === 2) { specialClass = 'quality-blue'; rankIcon = '✨'; }
+
+                    const episodeLabel = q.episode
+                        ? (q.isFullSeason || !/^\d+$/.test(q.episode) ? q.episode : `Ep. ${q.episode}`)
+                        : "Télécharger";
+
+                    if (isActuallySeries) {
+                        btn.className = `quality-pill ${specialClass}`;
+                        btn.style.padding = "10px 14px";
+                        btn.innerHTML = `
+                            ${rankIcon ? `<span style="margin-right:5px">${rankIcon}</span>` : ''}
+                            <span>${episodeLabel}</span>
+                        `;
+                    } else {
+                        btn.className = `file-btn ${specialClass}`;
+                        const mirrorLabel = items.length > 1 ? ` <span class="mirror-tag">Miroir ${idx + 1}</span>` : '';
+                        btn.innerHTML = `
+                            <div class="file-btn-left">
+                                <div class="file-host">
+                                    ${rankIcon ? `<span class="rank-icon">${rankIcon}</span>` : ''}
+                                    <span class="host-name">${hostDisplay}</span>
+                                    ${mirrorLabel}
+                                    ${q.episode ? `<span class="episode-tag">${q.episode}</span>` : ''}
+                                </div>
+                                <div class="file-size">${q.size && q.size !== 'N/A' ? q.size : 'Taille inconnue'}</div>
+                            </div>
+                            <div class="file-btn-right">
+                                <i data-lucide="download" class="dl-icon-btn"></i>
+                            </div>
+                        `;
+                    }
+
+                    btn.onclick = async () => {
+                        hide(dom('modal-overlay'));
+                        toggleBlockingLoader(true, "Récupération du lien...");
+                        try {
+                            const useJD = document.getElementById('toggle-jd') ? document.getElementById('toggle-jd').checked : true;
+                            const result = await apiCall('/get-link', 'POST', { chosenId: q.id, useJD });
+                            toggleBlockingLoader(false);
+
+                            if (useJD) {
+                                showToast('Lien envoyé à JDownloader !');
+                                document.querySelector('.nav-links li[data-target="section-downloads"]').click();
+                            } else {
+                                showModal('Lien Direct Récupéré', `
+                                    <div class="direct-link-box">
+                                        <p>Voici votre lien de téléchargement :</p>
+                                        <input type="text" value="${result.link}" readonly id="direct-link-input">
+                                        <div class="btn-group">
+                                            <button class="btn-primary" onclick="document.getElementById('direct-link-input').select(); document.execCommand('copy'); showToast('Copié !')">Copier</button>
+                                            <a href="${result.link}" target="_blank" class="btn-success">Ouvrir</a>
+                                        </div>
+                                    </div>
+                                `);
+                            }
+                        } catch (e) {
+                            toggleBlockingLoader(false);
+                            showToast("Erreur: " + e.message);
+                            show(dom('modal-overlay'));
+                        }
+                    };
+                    itemsGrid.appendChild(btn);
+                });
+            });
+
+
+            lucide.createIcons();
+        };
+
+        if (allVersions.length > 1) {
+            allVersions.forEach(version => {
+                const tab = document.createElement('button');
+                tab.className = 'version-tab';
+                tab.textContent = version;
+                if (version === activeVersion) tab.classList.add('active');
+                tab.onclick = () => {
+                    activeVersion = version;
+                    versionTabsWrap.querySelectorAll('.version-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    renderFiles(version);
+                };
+                versionTabsWrap.appendChild(tab);
+            });
         }
-        lucide.createIcons();
+
+        renderFiles(activeVersion);
     };
 
 

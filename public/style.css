@@ -99,8 +99,21 @@ body {
 .poster-container { position: relative; aspect-ratio: 2/3; overflow: hidden; background: #222; }
 .poster-container img { width: 100%; height: 100%; object-fit: cover; }
 .card-info { padding: 12px; }
-.card-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-year { font-size: 0.85rem; color: var(--text-sec); margin-top: 4px; }
+.card-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem; line-height: 1.4; }
+.card-year { font-size: 0.8rem; color: var(--text-sec); margin-top: 4px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+
+.type-badge {
+    background: rgba(229, 9, 20, 0.2);
+    color: #ff4d4d;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(229, 9, 20, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 
 /* --- DOWNLOADS --- */
 .downloads-container { max-width: 700px; margin: 0 auto; padding-top: 1rem; }
@@ -365,3 +378,177 @@ input:-webkit-autofill:active {
 .btn-group { display: flex; gap: 10px; justify-content: center; }
 
 .empty-msg { text-align: center; color: var(--text-sec); padding: 2rem; font-style: italic; }
+
+/* --- MODAL REDESIGN --- */
+.modal-sep {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin: 1.2rem 0;
+}
+
+/* Seasons/qualities grid */
+.seasons-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 1.2rem;
+}
+
+/* Version tabs (filter by quality) */
+.version-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 1rem;
+}
+
+.version-tab {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 6px 14px;
+    border-radius: 20px;
+    color: var(--text-sec);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.version-tab:hover {
+    background: rgba(255,255,255,0.1);
+    color: white;
+}
+
+.version-tab.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 2px 10px rgba(229, 9, 20, 0.35);
+}
+
+/* File cards */
+.file-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    padding: 12px 14px;
+    border-radius: 10px;
+    transition: all 0.18s ease;
+    width: 100%;
+    color: white;
+    cursor: pointer;
+    text-align: left;
+    gap: 10px;
+}
+
+.file-btn:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(255,255,255,0.2);
+    transform: translateX(3px);
+}
+
+.file-btn.quality-gold {
+    border-color: rgba(229,160,13,0.4);
+    background: linear-gradient(90deg, rgba(229,160,13,0.08) 0%, rgba(0,0,0,0) 100%);
+}
+
+.file-btn.quality-blue {
+    border-color: rgba(74,144,226,0.4);
+    background: linear-gradient(90deg, rgba(74,144,226,0.08) 0%, rgba(0,0,0,0) 100%);
+}
+
+.file-btn-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
+}
+
+.file-host {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.rank-icon { font-size: 0.95rem; }
+
+.host-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: white;
+    letter-spacing: 0.3px;
+}
+
+.mirror-tag {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-sec);
+    font-size: 0.7rem;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.episode-tag {
+    background: rgba(229,9,20,0.15);
+    color: #f87171;
+    font-size: 0.7rem;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    border: 1px solid rgba(229,9,20,0.3);
+}
+
+.file-size {
+    font-size: 0.78rem;
+    color: var(--text-sec);
+    font-weight: 500;
+}
+
+.file-btn-right {
+    flex-shrink: 0;
+    color: var(--text-sec);
+    transition: color 0.18s;
+}
+
+.file-btn:hover .file-btn-right { color: white; }
+
+.dl-icon-btn { width: 18px; height: 18px; }
+
+/* --- SEASON GROUPING --- */
+.season-group {
+    margin-bottom: 1.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.season-group:last-child {
+    margin-bottom: 0;
+}
+
+.season-group-title {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.season-group-title::before {
+    content: '';
+    display: block;
+    width: 3px;
+    height: 14px;
+    background: var(--primary);
+    border-radius: 2px;
+}

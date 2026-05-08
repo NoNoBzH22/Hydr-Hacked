@@ -1,20 +1,30 @@
 import { CONFIG } from '../../src/utils/config.js';
 
 export const CONFIG_DW = {
-    BASE_URL: CONFIG.BASE_URL,
+    BASE_URL: (CONFIG.BASE_URL || '').replace(/\/$/, ''), // Supprime le slash final
     API_KEY: CONFIG.DW_API_KEY,
 };
+
+const DW_HEADERS = {
+    'Accept': 'application/json',
+    'Authorization': `Bearer ${CONFIG_DW.API_KEY}`,
+    'User-Agent': 'Mozilla/5.0'
+};
+
+const TIMEOUT = 10_000; // 10 secondes max par requête
 
 export async function apiGet(urlPath: string, params: Record<string, any> = {}) {
     const qs = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
     const url = `${CONFIG_DW.BASE_URL}/api/v1/${urlPath}` + (qs ? `?${qs}` : '');
     try {
         const res = await fetch(url, {
-            headers: {
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${CONFIG_DW.API_KEY}`
-            }
+            headers: DW_HEADERS,
+            signal: AbortSignal.timeout(TIMEOUT)
         });
+        if (!res.ok) {
+            console.error(`[DW-API] apiGet HTTP ${res.status} on ${urlPath}`);
+            return null;
+        }
         return await res.json();
     } catch (e: any) {
         console.error(`[DW-API] apiGet Error on ${urlPath}:`, e.message);
@@ -27,12 +37,9 @@ export async function apiPost(urlPath: string, body: any = {}) {
     try {
         const res = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Authorization': `Bearer ${CONFIG_DW.API_KEY}`
-            },
-            body: JSON.stringify(body)
+            headers: { ...DW_HEADERS, 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(TIMEOUT)
         });
         return { status: res.status, body: await res.text() };
     } catch (e: any) {
@@ -45,8 +52,13 @@ export async function fetchSearch(query: string) {
     const url = `${CONFIG_DW.BASE_URL}/api/v1/search/${encodeURIComponent(query)}?loader=searchAutocomplete`;
     try {
         const res = await fetch(url, {
-            headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }
+            headers: DW_HEADERS,
+            signal: AbortSignal.timeout(TIMEOUT)
         });
+        if (!res.ok) {
+            console.error(`[DW-API] Search HTTP ${res.status} for "${query}"`);
+            return null;
+        }
         return await res.json();
     } catch (e: any) {
         console.error('[DW-API] Search failed:', e.message);
@@ -57,7 +69,10 @@ export async function fetchSearch(query: string) {
 export async function fetchMovieLinks(titleId: string) {
     const url = `${CONFIG_DW.BASE_URL}/api/v1/titles/${titleId}/download`;
     try {
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        const res = await fetch(url, {
+            headers: DW_HEADERS,
+            signal: AbortSignal.timeout(TIMEOUT)
+        });
         if (!res.ok) return null;
         return await res.json();
     } catch (e: any) {

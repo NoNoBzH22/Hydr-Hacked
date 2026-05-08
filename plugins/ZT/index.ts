@@ -4,6 +4,30 @@ import { sourceRegistry } from '../../src/core/registry.js';
 import { fetchSearchResults, fetchTrendingMovies, fetchTrendingSeries, fetchContentPage } from './api.js';
 import { parseSearchHTML, parseContentHTML } from './parser.js';
 
+/**
+ * Normalise un titre pour la comparaison (minuscules, sans accents, sans ponctuation).
+ */
+function normalizeTitle(title: string): string {
+    return title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Déduplique les résultats par titre normalisé, en gardant la première occurrence.
+ */
+function deduplicateByTitle(results: SearchResult[]): SearchResult[] {
+    const seen = new Set<string>();
+    return results.filter(r => {
+        const key = normalizeTitle(r.title);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
 export class ZoneTelechargementAPI implements ISource {
     name = 'zt';
     private baseUrl: string | undefined;
@@ -44,7 +68,7 @@ export class ZoneTelechargementAPI implements ISource {
             results = results.filter(r => r.type === 'series' || r.type === 'anime');
         }
 
-        return results;
+        return deduplicateByTitle(results);
     }
 
     async getTrending(mediaType: MediaType): Promise<SearchResult[]> {
@@ -53,7 +77,8 @@ export class ZoneTelechargementAPI implements ISource {
             const html = mediaType === 'movie'
                 ? await fetchTrendingMovies(this.baseUrl)
                 : await fetchTrendingSeries(this.baseUrl);
-            return parseSearchHTML(html, this.baseUrl).slice(0, 20);
+            const results = parseSearchHTML(html, this.baseUrl).slice(0, 40);
+            return deduplicateByTitle(results).slice(0, 20);
         } catch (e: any) {
             console.error(`[ZT] ❌ Erreur trending ${mediaType}:`, e.message);
             return [];
@@ -62,9 +87,11 @@ export class ZoneTelechargementAPI implements ISource {
 
     async getContentLinks(pageUrl: string): Promise<ContentLinks> {
         if (!this.baseUrl) throw new Error('ZT_BASE_URL non configurée.');
-        const html = await fetchContentPage(pageUrl);
+        const fullUrl = pageUrl.startsWith('http') ? pageUrl : (this.baseUrl + (pageUrl.startsWith('/') ? '' : '/') + pageUrl);
+        const html = await fetchContentPage(fullUrl);
         return parseContentHTML(html);
     }
+
 
     async getSelection(identifier: string, type?: string, seasonValue?: string | number): Promise<SelectionData> {
         const targetUrl = seasonValue ? String(seasonValue) : identifier;

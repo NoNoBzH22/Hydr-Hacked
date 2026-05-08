@@ -81,27 +81,65 @@ export function parseContentHTML(html: string): ContentLinks {
             const decodedUrl = decodeZoneursLink(zoneursUrl);
             if (!decodedUrl) continue;
 
+            // Extraire la taille depuis le label : "NOM.FICHIER (11.5 GO)" → "11.5 GO"
+            const sizeRegex = /\s*\(([\d.,]+\s*(?:go|gb|mo|mb|ko|kb|to|tb))\)/i;
+            let sizeMatch = label.match(sizeRegex);
+            let size = sizeMatch ? sizeMatch[1]!.trim().toUpperCase() : undefined;
+
+            // Si non trouvé dans le label, on cherche dans le nom de la release (qualité)
+            if (!size && releaseNames.length > 0) {
+                const qualityMatch = releaseNames[0].match(sizeRegex);
+                if (qualityMatch) size = qualityMatch[1]!.trim().toUpperCase();
+            }
+            
+            // Nettoyer le label pour enlever la taille
+            const cleanedLabel = label.replace(sizeRegex, "").trim();
+
+            // On n'utilise le label comme "épisode" que si c'est un vrai nom de fichier/épisode (pas juste "Télécharger")
+            const isGenericLabel = /^(t\u00e9l\u00e9charger|download|cliquez ici|lien|turbobit|1fichier|uptobox|rapidgator|nitroflare)/i.test(cleanedLabel);
+            let episode = (!isGenericLabel && cleanedLabel.length > 3) ? cleanedLabel : undefined;
+
+            // SI le label est générique, on cherche un texte juste avant (ex: "Episode 1")
+            if (isGenericLabel || !episode) {
+                const index = linkMatch.index;
+                const prevHtml = sectionHtml.substring(Math.max(0, index - 100), index);
+                // Cherche "Episode X", "Saison complète", etc.
+                const epMatch = prevHtml.match(/(?:<b>|<strong>)?(Episode\s*\d+|Saison\s*compl\u00e8te)(?:<\/b>|<\/strong>)?/i);
+                if (epMatch) {
+                    episode = epMatch[1].trim();
+                }
+            }
+
             links.push({
                 id: zoneursUrl,
                 host: hostName,
-                label,
+                label: cleanedLabel,
                 url: decodedUrl,
+                size,
                 quality: releaseNames.length > 0 ? releaseNames[0] : 'Inconnu',
+                episode: episode,
             });
         }
+
     }
 
     const relatedSeasons: { href: string; label: string }[] = [];
-    const seasonSectionMatch = html.match(/galement disponibles[\s\S]*?<\/h3>([\s\S]*?)(?:<\/div>|<div[^>]*class="postinfo")/);
-    if (seasonSectionMatch) {
-        const seasonBlock = seasonSectionMatch[1]!;
+    // Chercher toutes les sections "également disponibles"
+    const sectionRegex = /galement disponibles[\s\S]*?<\/h3>([\s\S]*?)(?:<h3|<\/div>|<div[^>]*class="postinfo")/g;
+    let sSectionMatch: RegExpExecArray | null;
+    while ((sSectionMatch = sectionRegex.exec(html)) !== null) {
+        const seasonBlock = sSectionMatch[1]!;
         const seasonRegex = /<a[^>]*href="([^"]+)"[^>]*><span class="otherquality">([\s\S]*?)<\/span><\/a>/g;
         let sMatch: RegExpExecArray | null;
         while ((sMatch = seasonRegex.exec(seasonBlock)) !== null) {
             const label = sMatch[2]!.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-            relatedSeasons.push({ href: sMatch[1]!.trim(), label });
+            // Eviter les doublons si une même saison apparaît dans plusieurs sections
+            if (!relatedSeasons.find(rs => rs.href === sMatch![1].trim())) {
+                relatedSeasons.push({ href: sMatch[1]!.trim(), label });
+            }
         }
     }
+
 
     return { links, releaseNames, relatedSeasons };
 }
