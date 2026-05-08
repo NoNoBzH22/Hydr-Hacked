@@ -14,4 +14,4 @@ COPY --from=builder /app/views ./views
 COPY --from=builder /app/public ./public
 
 EXPOSE 3067
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/src/index.js"]

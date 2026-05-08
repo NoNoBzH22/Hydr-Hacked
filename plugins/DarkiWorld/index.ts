@@ -1,6 +1,6 @@
-import { ISource, SearchResult, MediaType, ContentLinks, VideoLink, SelectionData } from '../types/source.js';
-import { CONFIG } from '../utils/config.js';
-import { sourceRegistry } from './registry.js';
+import { ISource, SearchResult, MediaType, ContentLinks, VideoLink, SelectionData } from '../../src/types/source.js';
+import { CONFIG } from '../../src/utils/config.js';
+import { sourceRegistry } from '../../src/core/registry.js';
 
 const CONFIG_DW = {
     BASE_URL: CONFIG.BASE_URL,

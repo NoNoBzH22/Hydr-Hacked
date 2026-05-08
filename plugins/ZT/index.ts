@@ -1,6 +1,6 @@
-import { ISource, SearchResult, MediaType, ContentLinks, VideoLink, SelectionData } from '../types/source.js';
-import { CONFIG } from '../utils/config.js';
-import { sourceRegistry } from './registry.js';
+import { ISource, SearchResult, MediaType, ContentLinks, VideoLink, SelectionData } from '../../src/types/source.js';
+import { CONFIG } from '../../src/utils/config.js';
+import { sourceRegistry } from '../../src/core/registry.js';
 
 export class ZoneTelechargementAPI implements ISource {
     name = 'zt';

@@ -1,4 +1,4 @@
-import { sourceRegistry } from '../sources/registry.js';
+import { sourceRegistry } from '../core/registry.js';
 import { ISource, SearchResult } from '../types/source.js';
 
 export interface GlobalState {

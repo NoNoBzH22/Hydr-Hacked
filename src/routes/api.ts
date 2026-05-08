@@ -1,6 +1,6 @@
 import express from 'express';
 import { globalState, getActiveSources, checkSiteStatus } from '../utils/state.js';
-import { sourceRegistry } from '../sources/registry.js';
+import { sourceRegistry } from '../core/registry.js';
 import apiLimiter from '../utils/rateLimiter.js';
 import authMiddleware from '../utils/authMiddleware.js';
 import { sendToJDownloader } from '../utils/jdownloader.js';
@@ -115,7 +115,7 @@ const handleSelectContent: express.RequestHandler = async (req, res) => {
         globalState.isSeries = selection.isSeries;
         globalState.currentLiens = selection.links;
         
-        selection.links.forEach((link, i) => {
+        selection.links.forEach((link: any, i: number) => {
             const key = link.id != null ? String(link.id) : String(i);
             if (link.url) globalState.directUrlMap[key] = link.url;
         });
@@ -194,7 +194,7 @@ router.post('/select-season', apiLimiter, authMiddleware, async (req, res) => {
         );
 
         globalState.directUrlMap = {};
-        selection.links.forEach((link, i) => {
+        selection.links.forEach((link: any, i: number) => {
             const key = link.id != null ? String(link.id) : String(i);
             if (link.url) globalState.directUrlMap[key] = link.url;
         });

@@ -14,8 +14,8 @@ const FileStore = connectSessionFileStore(session);
 
 import { CONFIG } from './utils/config.js';
 import { globalState, checkSiteStatus } from './utils/state.js';
-import { discoverSources } from './sources/discovery.js';
-import { sourceRegistry } from './sources/registry.js';
+import { discoverSources } from './core/discovery.js';
+import { sourceRegistry } from './core/registry.js';
 
 import authRoutes from './routes/auth.js';
 import apiRoutes from './routes/api.js';
