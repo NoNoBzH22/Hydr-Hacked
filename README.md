@@ -93,7 +93,7 @@ Créez un fichier `.env` à la racine du projet et configurez les variables suiv
 
 | Variable | Type | Description |
 |---|---|---|
-| `ZT_BASE_URL` | **Requis** | URL complète du site Zone-Telechargement (ex: `https://zone-telechargement.org`). |
+| `ZT_BASE_URL` | **Requis** | URL complète du site Zone-Telechargement. |
 | `BASE_URL` | Optionnel | URL complète du site Hydracker (nécessaire si vous utilisez un token). |
 | `API_PASSWORD` | **Requis** | Mot de passe pour l'écran de connexion initial. |
 | `SECRET` | **Requis** | Clé secrète pour les sessions (mettez ce que vous voulez). |
