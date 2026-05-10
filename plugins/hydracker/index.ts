@@ -1,25 +1,25 @@
 import { ISource, SearchResult, MediaType, ContentLinks, VideoLink, SelectionData } from '../../src/types/source.js';
 import { sourceRegistry } from '../../src/core/registry.js';
-import { CONFIG_DW, apiGet, apiPost, fetchSearch, fetchMovieLinks, fetchSeriesLiens } from './api.js';
+import { CONFIG_HYDRACKER, apiGet, apiPost, fetchSearch, fetchMovieLinks, fetchSeriesLiens } from './api.js';
 import {
     QUALITY_MAP, formatSize,
     parseSearchResults, parseTrendingResults,
     parseMovieLinks, parseSeasons, parsePremiumLink
 } from './parser.js';
 
-export class DarkiWorldAPI implements ISource {
+export class HydrackerAPI implements ISource {
     name = 'hydracker';
 
     async healthCheck(): Promise<boolean> {
-        if (!CONFIG_DW.BASE_URL || !CONFIG_DW.API_KEY) {
-            console.warn('[DW] ⚠️ BASE_URL ou DW_API_KEY manquante.');
+        if (!CONFIG_HYDRACKER.BASE_URL || !CONFIG_HYDRACKER.API_KEY) {
+            console.warn('[Hydracker] ⚠️ HYDRACKER_URL ou HYDRACKER_API_KEY manquante.');
             return false;
         }
         try {
-            const res = await fetch(`${CONFIG_DW.BASE_URL}/api/v1/titles?page=1&paginate=lengthAware`, {
+            const res = await fetch(`${CONFIG_HYDRACKER.BASE_URL}/api/v1/titles?page=1&paginate=lengthAware`, {
                 headers: {
                     'Accept': 'application/json',
-                    'Authorization': `Bearer ${CONFIG_DW.API_KEY}`
+                    'Authorization': `Bearer ${CONFIG_HYDRACKER.API_KEY}`
                 },
                 signal: AbortSignal.timeout(5000)
             });
@@ -32,12 +32,12 @@ export class DarkiWorldAPI implements ISource {
     async search(query: string, mediaType: MediaType = 'movie'): Promise<SearchResult[]> {
         const data = await fetchSearch(query);
         if (!data) {
-            console.error('[DW] search: fetchSearch a retourné null pour', query);
+            console.error('[Hydracker] search: fetchSearch a retourné null pour', query);
             return [];
         }
         const totalRaw = (data.results || []).length;
         const parsed = parseSearchResults(data, mediaType);
-        console.log(`[DW] search "${query}" (${mediaType}): ${totalRaw} résultats bruts → ${parsed.length} après filtre`);
+        console.log(`[Hydracker] search "${query}" (${mediaType}): ${totalRaw} résultats bruts → ${parsed.length} après filtre`);
         return parsed;
     }
 
@@ -47,7 +47,7 @@ export class DarkiWorldAPI implements ISource {
             const data = await apiGet('titles', { order: 'trending:desc', type, page: 1, paginate: 'lengthAware' });
             return parseTrendingResults(data);
         } catch (e: any) {
-            console.error(`[DW] getTrending Error for ${type}:`, e.message);
+            console.error(`[Hydracker] getTrending Error for ${type}:`, e.message);
             return [];
         }
     }
@@ -112,4 +112,4 @@ export class DarkiWorldAPI implements ISource {
 }
 
 // ── Auto-registration ──
-sourceRegistry.register(new DarkiWorldAPI());
+sourceRegistry.register(new HydrackerAPI());

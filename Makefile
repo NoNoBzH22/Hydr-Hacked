@@ -13,11 +13,14 @@ help: ## Affiche ce message d'aide
 	@echo "$(BLUE)Commande disponibles :$(NC)"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-15s$(NC) %s\n", $$1, $$2}'
 
-install: ## Installation des dépendances du projet
-	@echo "$(YELLOW)Installation des dépendances...$(NC)"
-	npm install
+install: node_modules ## Installation des dépendances
 
-build: ## Compilation TypeScript vers JavaScript
+node_modules: package.json package-lock.json
+	@echo "$(YELLOW)Vérification/Installation des dépendances...$(NC)"
+	npm install
+	@touch node_modules
+
+build: node_modules ## Compilation TypeScript vers JavaScript
 	@echo "$(YELLOW)Compilation du projet...$(NC)"
 	npm run build
 	@echo "$(GREEN)Compilation terminée!$(NC)"
@@ -26,7 +29,7 @@ start: build ## Compilation et lancement du projet
 	@echo "$(YELLOW)Lancement du projet...$(NC)"
 	npm start
 
-dev: ## Lancement en mode développement (hot reload)
+dev: node_modules ## Lancement en mode développement (hot reload)
 	@echo "$(YELLOW)Lancement du serveur en mode développement...$(NC)"
 	npm run dev
 

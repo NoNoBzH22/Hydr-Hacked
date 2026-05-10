@@ -38,7 +38,7 @@ export class ZoneTelechargementAPI implements ISource {
 
     async healthCheck(): Promise<boolean> {
         if (!this.baseUrl) {
-            console.warn('[ZT] ⚠️ ZT_BASE_URL non définie.');
+            console.warn('[ZT] ⚠️ ZT_URL non définie.');
             return false;
         }
         try {
@@ -54,7 +54,7 @@ export class ZoneTelechargementAPI implements ISource {
     }
 
     async search(query: string, mediaType: MediaType = 'movie'): Promise<SearchResult[]> {
-        if (!this.baseUrl) throw new Error('ZT_BASE_URL non configurée.');
+        if (!this.baseUrl) throw new Error('ZT_URL non configurée.');
         if (!query || query.length < 4) throw new Error('La recherche nécessite au moins 4 caractères.');
 
         const html = await fetchSearchResults(this.baseUrl, query);
@@ -86,7 +86,7 @@ export class ZoneTelechargementAPI implements ISource {
     }
 
     async getContentLinks(pageUrl: string): Promise<ContentLinks> {
-        if (!this.baseUrl) throw new Error('ZT_BASE_URL non configurée.');
+        if (!this.baseUrl) throw new Error('ZT_URL non configurée.');
         const fullUrl = pageUrl.startsWith('http') ? pageUrl : (this.baseUrl + (pageUrl.startsWith('/') ? '' : '/') + pageUrl);
         const html = await fetchContentPage(fullUrl);
         return parseContentHTML(html);
@@ -108,4 +108,4 @@ export class ZoneTelechargementAPI implements ISource {
 }
 
 // ── Auto-registration ──
-sourceRegistry.register(new ZoneTelechargementAPI(CONFIG.ZT_BASE_URL));
+sourceRegistry.register(new ZoneTelechargementAPI(CONFIG.ZT_URL));

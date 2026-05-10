@@ -44,7 +44,7 @@ export function parseSearchResults(data: any, mediaType: MediaType): SearchResul
         hrefPath: String(r.id),
         type: r.type || (r.is_series ? 'series' : 'movie'),
         source: 'hydracker',
-        dwId: String(r.id)
+        hydrackerId: String(r.id)
     }));
 }
 
@@ -58,7 +58,7 @@ export function parseTrendingResults(data: any): SearchResult[] {
         hrefPath: String(r.id),
         type: r.type || (r.is_series ? 'series' : 'movie'),
         source: 'hydracker',
-        dwId: String(r.id)
+        hydrackerId: String(r.id)
     })).slice(0, 19);
 }
 

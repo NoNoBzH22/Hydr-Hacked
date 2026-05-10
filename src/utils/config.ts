@@ -2,12 +2,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const CONFIG = {
-    // Hydracker (optionnel)
-    BASE_URL: process.env.BASE_URL,
-    DW_API_KEY: process.env.DW_API_KEY,
+    // Plugin Hydracker (optionnel)
+    HYDRACKER_URL: process.env.HYDRACKER_URL,
+    HYDRACKER_API_KEY: process.env.HYDRACKER_API_KEY,
 
-    // Zone-Telechargement (source par défaut)
-    ZT_BASE_URL: process.env.ZT_BASE_URL,
+    // Plugin Zone-Telechargement (par défaut)
+    ZT_URL: process.env.ZT_URL,
 
     // App
     API_PASSWORD: process.env.API_PASSWORD || 'hydracker',

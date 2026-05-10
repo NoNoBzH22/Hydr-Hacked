@@ -7,7 +7,7 @@ export interface SearchResult {
     hrefPath: string; // The identifier or path for the source
     type: MediaType;
     source: string; // 'zt' | 'hydracker'
-    dwId?: string;  // Specific to DarkiWorld
+    hydrackerId?: string;  // Specific to Hydracker
 }
 
 export interface VideoLink {
