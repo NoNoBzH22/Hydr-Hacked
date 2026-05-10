@@ -3,9 +3,8 @@ services:
     build: .
     container_name: hydrhacked_app
     restart: unless-stopped
+    network_mode: host
 
-    ports:
-      - "${PORT:-3067}:${PORT:-3067}"
     env_file:
       - .env
     volumes:

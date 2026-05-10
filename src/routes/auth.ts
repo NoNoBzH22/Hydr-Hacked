@@ -1,12 +1,12 @@
-const express = require('express');
-const crypto = require('crypto');
-const { CONFIG } = require('../utils/config');
+import express from 'express';
+import crypto from 'crypto';
+import { CONFIG } from '../utils/config.js';
 
 const router = express.Router();
 
 const SERVER_SALT = crypto.randomBytes(16).toString('hex');
 
-const hashPassword = (password, salt) => {
+const hashPassword = (password: string, salt: string) => {
     return crypto.scryptSync(password, salt, 64);
 };
 
@@ -20,7 +20,7 @@ router.post('/login', (req, res) => {
         const userHashBuffer = hashPassword(password, SERVER_SALT);
         const passwordMatch = crypto.timingSafeEqual(CORRECT_HASH_BUFFER, userHashBuffer);
         if (passwordMatch) {
-            req.session.isLoggedIn = true;
+            (req.session as any).isLoggedIn = true;
             console.log(`[Auth] Connexion réussie pour ${req.ip}`);
             res.json({ success: true });
         } else {
@@ -35,7 +35,7 @@ router.post('/login', (req, res) => {
 });
 
 router.get('/check-session', (req, res) => {
-    res.json({ isLoggedIn: req.session.isLoggedIn || false });
+    res.json({ isLoggedIn: (req.session as any).isLoggedIn || false });
 });
 
 router.post('/logout', (req, res) => {
@@ -46,4 +46,4 @@ router.post('/logout', (req, res) => {
     });
 });
 
-module.exports = router;
+export default router;
