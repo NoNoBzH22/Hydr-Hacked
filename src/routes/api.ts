@@ -20,8 +20,8 @@ router.get('/status', (req, res) => {
 });
 
 router.get('/trending', (req, res) => {
-    res.json({ 
-        films: globalState.trendingFilms || [], 
+    res.json({
+        films: globalState.trendingFilms || [],
         series: globalState.trendingSeries || [],
         isOffline: globalState.isSiteOffline,
         message: globalState.siteOfflineMessage
@@ -48,45 +48,79 @@ router.post('/set-sources', authMiddleware, async (req, res) => {
 // ========================= RECHERCHE =========================
 
 router.post('/search', async (req, res) => {
-    const { title, mediaType: rawType = 'film' } = req.body;
-    if (!title) return res.status(400).json({ error: "Titre manquant." });
+    const { 
+        title, 
+        mediaType: rawTypeInput, 
+        type: typeInput,
+        source: reqSource, 
+        src: reqSrc, 
+        sources: reqSources,
+        mergeResults: reqMergeResults,
+        mergeresult: reqMergeResult
+    } = req.body;
 
+    // Handle both naming conventions and stringified booleans
+    const mergeResults = (reqMergeResults !== undefined ? reqMergeResults : reqMergeResult) !== false && 
+                         (reqMergeResults !== 'false' && reqMergeResult !== 'false');
+
+    const rawType = rawTypeInput || typeInput || 'film';
     const mediaType = rawType === 'film' ? 'movie' : (rawType === 'serie' ? 'series' : rawType);
 
-    const sources = getActiveSources();
-    if (sources.length === 0) return res.status(500).json({ error: "Aucune source active." });
+    if (!title) return res.status(400).json({ error: "Titre manquant." });
+
+    // Determine which sources to query
+    let sources = getActiveSources();
+    const filterSources = reqSources || reqSource || reqSrc;
+    
+    if (filterSources) {
+        const targetNames = Array.isArray(filterSources) ? filterSources : [filterSources];
+        sources = sources.filter(s => targetNames.includes(s.name));
+    }
+
+    if (sources.length === 0) return res.status(500).json({ error: "Aucune source active correspondant à la demande." });
 
     console.log(`\n--- Recherche [${sources.map(s => s.name.toUpperCase()).join(', ')}]: "${title}" (${mediaType}) ---`);
 
     try {
         const resultsPromises = sources.map(async (source) => {
             try {
-                return await source.search(title, mediaType as MediaType);
+                const results = await source.search(title, mediaType as MediaType);
+                return { sourceName: source.name, results };
             } catch (e: any) {
                 console.error(`Erreur recherche sur ${source.name}:`, e.message);
-                return e.message; // Return error message instead of empty array
+                return { sourceName: source.name, error: e.message };
             }
         });
 
-        const allResultsArrays = await Promise.all(resultsPromises);
-        const errors: string[] = [];
-        let allResults: SearchResult[] = [];
+        const allResultsRaw = await Promise.all(resultsPromises);
         
-        allResultsArrays.forEach((res, idx) => {
-            if (Array.isArray(res)) {
-                allResults = allResults.concat(res);
-            } else {
-                errors.push(`${sources[idx].name}: ${res}`);
+        if (mergeResults) {
+            let allResults: SearchResult[] = [];
+            const errors: string[] = [];
+            
+            allResultsRaw.forEach(item => {
+                if (item.results) {
+                    allResults = allResults.concat(item.results);
+                } else if (item.error) {
+                    errors.push(`${item.sourceName}: ${item.error}`);
+                }
+            });
+
+            if (!allResults.length) {
+                if (errors.length > 0) {
+                    return res.status(500).json({ error: `Erreur(s): ${errors.join(', ')}` });
+                }
+                return res.status(404).json({ error: "Aucun résultat trouvé." });
             }
-        });
-        
-        if (!allResults.length) {
-            if (errors.length > 0) {
-                return res.status(500).json({ error: `Erreur(s): ${errors.join(', ')}` });
-            }
-            return res.status(404).json({ error: "Aucun résultat trouvé." });
+            res.json(allResults);
+        } else {
+            // Return grouped results
+            const grouped: Record<string, SearchResult[] | { error: string }> = {};
+            allResultsRaw.forEach(item => {
+                grouped[item.sourceName] = item.results || { error: item.error! };
+            });
+            res.json(grouped);
         }
-        res.json(allResults);
     } catch (error: any) {
         console.error("Erreur /search:", error.message);
         res.status(500).json({ error: `Erreur serveur: ${error.message}` });
@@ -114,16 +148,16 @@ const handleSelectContent: express.RequestHandler = async (req, res) => {
 
         globalState.isSeries = selection.isSeries;
         globalState.currentLiens = selection.links;
-        
+
         selection.links.forEach((link: any, i: number) => {
             const key = link.id != null ? String(link.id) : String(i);
             if (link.url) globalState.directUrlMap[key] = link.url;
         });
 
-        res.json({ 
-            clientOptions: selection.links, 
-            hasNextPage: false, 
-            seasons: selection.seasons 
+        res.json({
+            clientOptions: selection.links,
+            hasNextPage: false,
+            seasons: selection.seasons
         });
 
     } catch (error: any) {
