@@ -242,8 +242,6 @@ router.post('/select-season', apiLimiter, authMiddleware, async (req, res) => {
     }
 });
 
-export default router;
-
 // ========================= JD DOWNLOAD STATUS =========================
 
 router.get('/download-status', apiLimiter, authMiddleware, async (req, res) => {
@@ -272,3 +270,24 @@ router.get('/download-status', apiLimiter, authMiddleware, async (req, res) => {
         else { res.status(500).json({ error: "Erreur API JDownloader" }); }
     }
 });
+
+// Suppression d'un lien JDownloader
+router.post('/jd/remove-link', apiLimiter, authMiddleware, async (req, res) => {
+    const { linkIds } = req.body;
+    if (!linkIds || !linkIds.length) return res.status(400).json({ error: 'linkIds requis.' });
+    try {
+        const response = await fetch(`http://${CONFIG.JD_HOST}:${CONFIG.JD_API_PORT}/downloadsV2/removeLinks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ params: [linkIds, []] })
+        });
+        if (!response.ok) throw new Error(`API JD non-OK: ${response.status}`);
+        console.log(`[JD] Suppression de ${linkIds.length} lien(s).`);
+        res.json({ success: true, message: `${linkIds.length} lien(s) supprimé(s).` });
+    } catch (error: any) {
+        console.error('[JD] Erreur suppression:', error.message);
+        res.status(500).json({ error: 'Erreur lors de la suppression JDownloader.' });
+    }
+});
+
+export default router;

@@ -30,6 +30,7 @@ export async function sendToJDownloader(link: string, titleName: string, isSerie
     fileContent += `forcedStart=TRUE${lineEnding}`;
     fileContent += `deepAnalyse=TRUE${lineEnding}`;
     fileContent += `autoConfirm=TRUE${lineEnding}`;
+    fileContent += `overwritePackagizerEnabled=TRUE${lineEnding}`;
     
     if (titleName) {
         const safeTitle = titleName.replace(/[\r\n<>:"/\\|?*]+/g, '').replace(/\.$/, '').trim();
@@ -41,7 +42,9 @@ export async function sendToJDownloader(link: string, titleName: string, isSerie
             fileContent += `downloadFolder=${seriesDownloadFolder}${lineEnding}`;
             console.log(` -> DownloadFolder: ${seriesDownloadFolder}`);
         } else {
-            console.log(`Film (${titleName}), configuration paquet JD...`);
+            const filmDownloadFolder = `${CONFIG.PATHS_JD_FILMS}${safeTitle}`;
+            fileContent += `downloadFolder=${filmDownloadFolder}${lineEnding}`;
+            console.log(` -> DownloadFolder: ${filmDownloadFolder}`);
         }
         console.log(` -> PackageName: ${safeTitle}`);
     }
