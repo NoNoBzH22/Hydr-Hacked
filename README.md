@@ -53,7 +53,7 @@
 
 ### 🐳 Via Docker (Recommandé)
 
-C'est la méthode la plus simple pour garder un environnement propre.
+C'est la méthode la plus simple pour garder un environnement propre. Nous utilisons désormais une image pré-construite qui se met à jour automatiquement.
 
 ```bash
 # 1. Cloner le projet (si ce n'est pas déjà fait)
@@ -63,9 +63,12 @@ git clone https://github.com/NoNoBzH22/Hydr-Hacked
 cp .env.example .env
 
 # 3. Lancer l'application
-docker compose up -d --build
+docker compose up -d
 ```
 📍 Accès : `http://localhost:3067`
+
+> [!TIP]
+> L'application utilise l'image `ghcr.io/nonobzh22/hydrhacked:latest`. Elle est reconstruite automatiquement à chaque mise à jour, vous n'avez plus besoin de compiler localement.
 
 ---
 
@@ -75,15 +78,23 @@ Pour ceux qui préfèrent une installation classique.
 **Prérequis :** [Node.js](https://nodejs.org/) v20+
 
 ```bash
-# 1. Installer les dépendances
-npm install
-
-# 2. Préparer la configuration
+# 1. Préparer la configuration
 cp .env.example .env
 
-# 3. Lancer le serveur
-npm start
+# 2. Installer les dépendances
+npm install
+
+# 3. Lancer l'application (compiler et démarrer)
+npm run build && npm start
 ```
+
+> [!TIP]
+> Si vous avez `make` installé, vous pouvez simplifier les commandes :
+> - `make start` : Installe, compile et lance l'application.
+> - `make dev` : Développement avec rechargement automatique (ou `npm run dev`).
+
+
+📍 Accès : `http://localhost:3067`
 
 ---
 
@@ -93,23 +104,58 @@ Créez un fichier `.env` à la racine du projet et configurez les variables suiv
 
 | Variable | Type | Description |
 |---|---|---|
-| `ZT_BASE_URL` | **Requis** | URL complète du site Zone-Telechargement. |
-| `BASE_URL` | Optionnel | URL complète du site Hydracker (nécessaire si vous utilisez un token). |
+| `ZT_URL` | **Requis** | URL complète du site Zone-Telechargement. |
+| `HYDRACKER_URL` | Optionnel | URL complète de votre instance Hydracker (nécessaire si plugin actif). |
 | `API_PASSWORD` | **Requis** | Mot de passe pour l'écran de connexion initial. |
-| `SECRET` | **Requis** | Clé secrète pour les sessions (mettez ce que vous voulez). |
-| `DW_API_KEY` | Optionnel | Votre token Hydracker (si utilisé). |
+| `SECRET` | **Requis** | Clé secrète pour les sessions. |
+| `HYDRACKER_API_KEY` | Optionnel | Votre token Hydracker. |
 | `PORT` | Optionnel | Port de l'application (Défaut : `3067`). |
-| `JD_HOST` | Optionnel | IP/Hôte de JDownloader (ex: `192.168.1.50`). |
+| `JD_HOST` | Optionnel | IP/Hôte de JDownloader. |
 | `JD_API_PORT` | Optionnel | Port API de JDownloader (Défaut : `3128`). |
 
 > [!WARNING]
-> **`ZT_BASE_URL` et `BASE_URL` ne sont volontairement pas renseignées par défaut** dans le code ni dans le `.env.example`. Vous devez les remplir vous-même avec les URLs des sites sources respectifs.
+> **`ZT_URL` et `HYDRACKER_URL` ne sont volontairement pas renseignées par défaut**. Vous devez les remplir vous-même avec les URLs des sites sources respectifs.
 
 > [!TIP]
-> **Comment obtenir ma `DW_API_KEY` ?**
-> Connectez-vous sur Hydracker, cherchez la page **Paramètres du compte** et descendez jusqu'à **Jetons d'accès API**. 
-> Cliquez sur **Créer un jeton** et copiez le token généré dans le champ `DW_API_KEY` de votre `.env`.
+> **Comment obtenir ma `HYDRACKER_API_KEY` ?**
+> Connectez-vous sur votre instance Hydracker, cherchez la page **Paramètres du compte** et descendez jusqu'à **Jetons d'accès API**. 
+> Cliquez sur **Créer un jeton** et copiez le token généré dans le champ `HYDRACKER_API_KEY` de votre `.env`.
 
+
+## 🧩 Créer un nouveau Plugin
+
+L'architecture d'Hydr'Hacked est modulaire. Vous pouvez facilement ajouter une nouvelle source en créant un plugin qui implémente l'interface `ISource`.
+
+### 1. Structure
+Créez un dossier dans `plugins/[NomDeVotreSource]/`. Vous aurez généralement besoin de :
+- `index.ts` : Point d'entrée et implémentation de la classe.
+- `api.ts` : Fonctions d'appels réseau.
+- `parser.ts` : Logique d'extraction des données (Cheerio, JSON, etc.).
+
+### 2. Implémentation
+Votre classe doit implémenter `ISource` (`src/types/source.ts`) :
+
+```typescript
+export interface ISource {
+    name: string;
+    healthCheck(): Promise<boolean>;
+    search(query: string, mediaType?: MediaType): Promise<SearchResult[]>;
+    getTrending(mediaType: MediaType): Promise<SearchResult[]>;
+    getSelection(identifier: string, type?: string, seasonValue?: string | number): Promise<SelectionData>;
+    resolveLink?(linkId: string): Promise<string | null>; // Optionnel
+}
+```
+
+### 3. Enregistrement
+À la fin de votre fichier `index.ts`, enregistrez votre source :
+```typescript
+sourceRegistry.register(new VotrePluginAPI(CONFIG.VOTRE_URL));
+```
+
+Le serveur découvrira et chargera automatiquement votre plugin au démarrage.
+
+## Note Liminaire
+Cet outil est une preuve de concept destinée à la recherche et à l'apprentissage. Son auteur ne cautionne aucun usage abusif ni aucune violation de droits tiers. Il appartient à chaque utilisateur de s'assurer que ses activités restent conformes à la législation ; la responsabilité de l'usage incombe exclusivement à l'utilisateur final.
 
 ## 🤝 Un Projet Communautaire
 **Hydr'Hacked** est un projet fait par la communauté, pour la communauté. Parce que le savoir (et les liens de téléchargement) ne devrait jamais être prisonnier derrière des murs de paye ou des scripts de sécurité mal conçus. 

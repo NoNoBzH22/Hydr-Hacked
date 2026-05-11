@@ -4,3 +4,4 @@ sessions/
 .DS_Store
 *.crawljob
 /downloads/
+dist/
