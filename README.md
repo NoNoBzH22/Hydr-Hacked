@@ -161,6 +161,8 @@ Cet outil est une preuve de concept destinée à la recherche et à l'apprentiss
 **Hydr'Hacked** est un projet fait par la communauté, pour la communauté. Parce que le savoir (et les liens de téléchargement) ne devrait jamais être prisonnier derrière des murs de paye ou des scripts de sécurité mal conçus. 
 Chaque Pull Request est la bienvenue, tant qu'elle contribue à rendre l'accès encore plus fluide et... disons, "généreux".
 
+## Note Liminaire
+Cet outil est une preuve de concept destinée à la recherche et à l'apprentissage. Son auteur ne cautionne aucun usage abusif ni aucune violation de droits tiers. Il appartient à chaque utilisateur de s'assurer que ses activités restent conformes à la législation ; la responsabilité de l'usage incombe exclusivement à l'utilisateur final.
 
 ## 📜 Licence
 Projet sous licence MIT. Faites-en bon usage (ou pas, on ne juge pas).
