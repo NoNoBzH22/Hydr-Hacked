@@ -5,6 +5,7 @@ import apiLimiter from '../utils/rateLimiter.js';
 import authMiddleware from '../utils/authMiddleware.js';
 import { sendToJDownloader } from '../utils/jdownloader.js';
 import { MediaType, SearchResult } from '../types/source.js';
+import { CONFIG } from '../utils/config.js';
 
 const router = express.Router();
 
@@ -242,3 +243,32 @@ router.post('/select-season', apiLimiter, authMiddleware, async (req, res) => {
 });
 
 export default router;
+
+// ========================= JD DOWNLOAD STATUS =========================
+
+router.get('/download-status', apiLimiter, authMiddleware, async (req, res) => {
+    const jdQuery = {
+        params: [{ "running": true, "name": true, "bytesLoaded": true, "bytesTotal": true, "uuid": true, "packageUUID": true, "finished": true }],
+        id: Date.now(), methodName: "queryLinks"
+    };
+    try {
+        const response = await fetch(`http://${CONFIG.JD_HOST}:${CONFIG.JD_API_PORT}/downloadsV2/queryLinks`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(jdQuery)
+        });
+        if (!response.ok) throw new Error(`API JD non-OK: ${response.status}`);
+        const data = await response.json();
+        let items: any[] = [];
+        if (data && data.data) {
+            items = data.data.map((item: any) => {
+                let percent = 0;
+                if (item.bytesTotal > 0) percent = (item.bytesLoaded / item.bytesTotal) * 100;
+                if (item.bytesLoaded > 0 && item.bytesLoaded === item.bytesTotal) percent = 100;
+                return { name: item.name, percent, uuid: item.uuid, packageUUID: item.packageUUID, finished: item.finished || percent >= 100 };
+            });
+        }
+        res.json(items);
+    } catch (error: any) {
+        if (error.code === 'ECONNREFUSED') { res.json([]); }
+        else { res.status(500).json({ error: "Erreur API JDownloader" }); }
+    }
+});

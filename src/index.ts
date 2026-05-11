@@ -50,7 +50,8 @@ app.use(session({
     store: new FileStore({
         path: './sessions',
         ttl: 48 * 60 * 60,
-        retries: 5
+        retries: 10,       
+        reapInterval: 3600    
     }),
     secret: CONFIG.SECRET,
     resave: false,
@@ -87,15 +88,8 @@ app.listen(PORT, async () => {
     // Auto-discovery : scan sources/, import, health check
     await discoverSources();
 
-    // Sélectionne ZT par défaut si disponible, sinon la première source saine
-    if (sourceRegistry.has('zt')) {
-        globalState.activeSources = ['zt'];
-    } else {
-        const defaultSource = sourceRegistry.getDefault();
-        if (defaultSource) {
-            globalState.activeSources = [defaultSource.name];
-        }
-    }
+    // Active toutes les sources qui ont passé le health check
+    globalState.activeSources = sourceRegistry.getAvailableNames();
     console.log(`\nSource(s) par défaut: ${globalState.activeSources.map(s => s.toUpperCase()).join(', ') || 'Aucune'}`);
 
     const scheduleNextCheck = () => {

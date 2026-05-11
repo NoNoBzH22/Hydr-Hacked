@@ -53,7 +53,7 @@
 
 ### 🐳 Via Docker (Recommandé)
 
-C'est la méthode la plus simple pour garder un environnement propre.
+C'est la méthode la plus simple pour garder un environnement propre. Nous utilisons désormais une image pré-construite qui se met à jour automatiquement.
 
 ```bash
 # 1. Cloner le projet (si ce n'est pas déjà fait)
@@ -63,9 +63,12 @@ git clone https://github.com/NoNoBzH22/Hydr-Hacked
 cp .env.example .env
 
 # 3. Lancer l'application
-docker compose up -d --build
+docker compose up -d
 ```
 📍 Accès : `http://localhost:3067`
+
+> [!TIP]
+> L'application utilise l'image `ghcr.io/nonobzh22/hydrhacked:latest`. Elle est reconstruite automatiquement à chaque mise à jour, vous n'avez plus besoin de compiler localement.
 
 ---
 
@@ -78,13 +81,20 @@ Pour ceux qui préfèrent une installation classique.
 # 1. Préparer la configuration
 cp .env.example .env
 
-# 2. Lancer l'application (installe et compile automatiquement)
-make start
+# 2. Installer les dépendances
+npm install
+
+# 3. Lancer l'application (compiler et démarrer)
+npm run build && npm start
 ```
 
 > [!TIP]
-> Si vous n'avez pas `make`, vous pouvez utiliser : `npm run build && npm start`.
-> Pour le développement avec rechargement automatique, utilisez : `make dev` (ou `npm run dev`).
+> Si vous avez `make` installé, vous pouvez simplifier les commandes :
+> - `make start` : Installe, compile et lance l'application.
+> - `make dev` : Développement avec rechargement automatique (ou `npm run dev`).
+
+
+📍 Accès : `http://localhost:3067`
 
 ---
 

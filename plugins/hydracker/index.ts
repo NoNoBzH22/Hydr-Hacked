@@ -105,9 +105,28 @@ export class HydrackerAPI implements ISource {
     }
 
     async resolveLink(linkId: string): Promise<string | null> {
-        const result = await apiPost(`download-premium/${linkId}`);
-        if (!result) return null;
-        return parsePremiumLink(result.body);
+        const maxRetries = 3;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                if (attempt > 1) {
+                    console.log(`[Hydracker] Retry ${attempt}/${maxRetries} for lien ${linkId}`);
+                    await new Promise(r => setTimeout(r, 5000));
+                }
+
+                const result = await apiGet(`content/liens/${linkId}`);
+                if (!result) continue;
+                
+                const finalUrl = result.directDL || result.url || result.link || '';
+                if (!finalUrl) continue;
+
+                console.log(`[Hydracker] Got final URL: ${finalUrl.substring(0, 80)}...`);
+
+                return finalUrl;
+            } catch (e: any) {
+                console.error(`[Hydracker] Exception resolving lien ${linkId} (attempt ${attempt}):`, e.message);
+            }
+        }
+        return null;
     }
 }
 

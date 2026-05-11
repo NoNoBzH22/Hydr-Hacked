@@ -73,7 +73,7 @@ export function parseMovieLinks(data: any): VideoLink[] {
     }).map(l => ({
         id: l.id,
         host: '1fichier',
-        url: l.lien,
+        url: data.directDL,
         size: formatSize(l.taille),
         sizeBytes: l.taille || 0,
         quality: l.quality || QUALITY_MAP[l.qualite] || 'Inconnu',

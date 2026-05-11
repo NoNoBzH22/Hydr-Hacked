@@ -1,7 +1,7 @@
 import { SearchResult, MediaType, ContentLinks, VideoLink } from '../../src/types/source.js';
 
 /**
- * Décode un lien obfusqué de type zoneurs (base64 dans le paramètre ?url=).
+ * Décode un lien obfusqué de type zoneurs.
  */
 export function decodeZoneursLink(fullUrl: string): string | null {
     try {

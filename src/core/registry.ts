@@ -37,6 +37,7 @@ class SourceRegistry {
                 if (healthy) {
                     this.active.set(source.name, source);
                     console.log(`[Registry] ✅ ${source.name.toUpperCase()} — opérationnelle`);
+                    
                 } else {
                     console.warn(`[Registry] ❌ ${source.name.toUpperCase()} — non disponible`);
                 }

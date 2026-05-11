@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Scanne le dossier sources/ et importe dynamiquement tous les fichiers *-api.*.
+ * Scanne le dossier plugins.
  * Chaque fichier s'auto-enregistre dans le registry au chargement du module.
  * Ensuite, les health checks sont lancés pour ne garder que les sources fonctionnelles.
  */
