@@ -96,7 +96,7 @@ export function parseContentHTML(html: string): ContentLinks {
             const cleanedLabel = label.replace(sizeRegex, "").trim();
 
             // On n'utilise le label comme "épisode" que si c'est un vrai nom de fichier/épisode (pas juste "Télécharger")
-            const isGenericLabel = /^(t\u00e9l\u00e9charger|download|cliquez ici|lien|turbobit|1fichier|uptobox|rapidgator|nitroflare)/i.test(cleanedLabel);
+            const isGenericLabel = /^(t\u00e9l\u00e9charger|download|cliquez ici|lien|turbobit|1fichier|uptobox|rapidgator|nitroflare|send.now)/i.test(cleanedLabel);
             let episode = (!isGenericLabel && cleanedLabel.length > 3) ? cleanedLabel : undefined;
 
             // SI le label est générique, on cherche un texte juste avant (ex: "Episode 1")

@@ -708,7 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const MAX_FILM_SIZE_MB = 15360;
+        const MAX_FILM_SIZE_MB = 45360;
 
         const enriched = data.clientOptions.map(q => {
             const lowEp = q.episode ? q.episode.toLowerCase() : '';
@@ -730,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (enriched.length === 0) {
-            body.innerHTML += '<p class="empty-msg">🚫 Aucun fichier trouvé sous la limite de taille.</p>';
+            body.innerHTML += '<p class="empty-msg">Aucun fichier disponible.</p>';
             return;
         }
 
