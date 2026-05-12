@@ -1,6 +1,6 @@
 services:
   hydrhacked:
-    image: nonobzh22/hydr-hacked:latest
+    image: ghcr.io/nonobzh22/hydr-hacked:latest
     container_name: hydrhacked_app
     restart: unless-stopped
     network_mode: host
