@@ -40,8 +40,10 @@ app.use(helmet({
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "blob:"],
             connectSrc: ["'self'"],
+            "upgrade-insecure-requests": null,
         }
-    }
+    },
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 app.use(express.json());
 app.set('trust proxy', 1);
