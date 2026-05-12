@@ -10,4 +10,15 @@ const apiLimiter = rateLimit({
     }
 });
 
+export const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // 5 tentatives échouées max par IP par fenêtre
+    skipSuccessfulRequests: true,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        error: "Trop de tentatives. Réessayez dans 15 minutes."
+    }
+});
+
 export default apiLimiter;
