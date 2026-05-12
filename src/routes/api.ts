@@ -3,6 +3,13 @@ import { globalState, getActiveSources, checkSiteStatus } from '../utils/state.j
 import { sourceRegistry } from '../core/registry.js';
 import apiLimiter from '../utils/rateLimiter.js';
 import authMiddleware from '../utils/authMiddleware.js';
+import {
+    validate,
+    SelectContentSchema,
+    GetLinkSchema,
+    SetSourcesSchema,
+    SelectSeasonSchema,
+} from '../utils/schemas.js';
 import { sendToJDownloader } from '../utils/jdownloader.js';
 import { MediaType, SearchResult } from '../types/source.js';
 import { CONFIG } from '../utils/config.js';
@@ -30,7 +37,7 @@ router.get('/trending', (req, res) => {
 });
 
 // Toggle sources
-router.post('/set-sources', authMiddleware, async (req, res) => {
+router.post('/set-sources', authMiddleware, validate(SetSourcesSchema), async (req, res) => {
     const { sources } = req.body;
     if (!Array.isArray(sources)) {
         return res.status(400).json({ error: "Format invalide, un tableau de sources est attendu." });
@@ -167,12 +174,12 @@ const handleSelectContent: express.RequestHandler = async (req, res) => {
     }
 };
 
-router.post('/select-movie', apiLimiter, authMiddleware, handleSelectContent);
-router.post('/select-trending', apiLimiter, authMiddleware, handleSelectContent);
+router.post('/select-movie', apiLimiter, authMiddleware, validate(SelectContentSchema), handleSelectContent);
+router.post('/select-trending', apiLimiter, authMiddleware, validate(SelectContentSchema), handleSelectContent);
 
 // ========================= GET LINK =========================
 
-router.post('/get-link', apiLimiter, authMiddleware, async (req, res) => {
+router.post('/get-link', apiLimiter, authMiddleware, validate(GetLinkSchema), async (req, res) => {
     if (req.body.chosenId == null) return res.status(400).json({ error: "ID manquant." });
     const chosenId = String(req.body.chosenId);
     const useJD = req.body.useJD !== false;
@@ -213,7 +220,7 @@ router.post('/change-page', apiLimiter, authMiddleware, async (req, res) => {
     res.json({ clientOptions: [], hasNextPage: false });
 });
 
-router.post('/select-season', apiLimiter, authMiddleware, async (req, res) => {
+router.post('/select-season', apiLimiter, authMiddleware, validate(SelectSeasonSchema), async (req, res) => {
     const { seasonValue } = req.body;
     const activeSource = globalState.currentSelectionSource ? sourceRegistry.get(globalState.currentSelectionSource) : null;
 
