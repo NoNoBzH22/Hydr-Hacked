@@ -67,13 +67,10 @@ export function parseMovieLinks(data: any): VideoLink[] {
     if (data.video) all.push(data.video);
     if (Array.isArray(data.alternative_videos)) all.push(...data.alternative_videos);
 
-    return all.filter(l => {
-        const host = (l.host && l.host.name) || '';
-        return host.toLowerCase().includes('1fichier') && l.lien && l.lien.includes('1fichier.com');
-    }).map(l => ({
+    return all.filter(l => l.lien).map(l => ({
         id: l.id,
-        host: '1fichier',
-        url: data.directDL,
+        host: (l.host && l.host.name) ? l.host.name : 'Inconnu',
+        url: l.lien || data.directDL,
         size: formatSize(l.taille),
         sizeBytes: l.taille || 0,
         quality: l.quality || QUALITY_MAP[l.qualite] || 'Inconnu',
