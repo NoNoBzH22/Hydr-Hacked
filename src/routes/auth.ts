@@ -1,6 +1,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { CONFIG } from '../utils/config.js';
+import { loginLimiter } from '../utils/rateLimiter.js';
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ const hashPassword = (password: string, salt: string) => {
 
 const CORRECT_HASH_BUFFER = hashPassword(CONFIG.API_PASSWORD, SERVER_SALT);
 
-router.post('/login', (req, res) => {
+router.post('/login', loginLimiter, (req, res) => {
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: "Mot de passe manquant." });
 
