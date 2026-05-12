@@ -39,13 +39,9 @@ router.get('/trending', (req, res) => {
 // Toggle sources
 router.post('/set-sources', authMiddleware, validate(SetSourcesSchema), async (req, res) => {
     const { sources } = req.body;
-    if (!Array.isArray(sources)) {
-        return res.status(400).json({ error: "Format invalide, un tableau de sources est attendu." });
-    }
-
-    const validSources = sources.filter(s => sourceRegistry.has(s));
+    const validSources = sources.filter((s: string) => sourceRegistry.has(s));
     globalState.activeSources = validSources;
-    console.log(`[Source] Sources actives mises à jour: ${validSources.map(s => s.toUpperCase()).join(', ')}`);
+    console.log(`[Source] Sources actives mises à jour: ${validSources.map((s: string) => s.toUpperCase()).join(', ')}`);
 
     // Force a status check to update trending films/series and online status for the new sources
     await checkSiteStatus();
@@ -139,7 +135,6 @@ router.post('/search', async (req, res) => {
 
 const handleSelectContent: express.RequestHandler = async (req, res) => {
     const { hrefPath, title, type, source } = req.body;
-    if (!hrefPath || !title || !source) return res.status(400).json({ error: "Données manquantes." });
 
     const activeSource = sourceRegistry.get(source);
     if (!activeSource) return res.status(500).json({ error: `Source "${source}" introuvable ou inactive.` });
@@ -180,7 +175,6 @@ router.post('/select-trending', apiLimiter, authMiddleware, validate(SelectConte
 // ========================= GET LINK =========================
 
 router.post('/get-link', apiLimiter, authMiddleware, validate(GetLinkSchema), async (req, res) => {
-    if (req.body.chosenId == null) return res.status(400).json({ error: "ID manquant." });
     const chosenId = String(req.body.chosenId);
     const useJD = req.body.useJD !== false;
 
