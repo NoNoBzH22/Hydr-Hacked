@@ -18,7 +18,8 @@
     "express-rate-limit": "^7.2.0",
     "express-session": "^1.18.0",
     "helmet": "^7.1.0",
-    "session-file-store": "^1.5.0"
+    "session-file-store": "^1.5.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
