@@ -1,6 +1,8 @@
 # 🐍 Hydr'Hacked 
 > [!IMPORTANT]
-> Merci de bien lire tout ça avant de déployer le server
+> Merci de bien lire tout ça avant de déployer le server  
+> Si vous êtes débutant(e) cette vidéo devrait répondre à vos questions  
+[Vidéo tutoriel](https://gofile.io/d/3CA4rk)
 
 ![Hydr'Hacked Logo](public/images/icone-192.png)
 
