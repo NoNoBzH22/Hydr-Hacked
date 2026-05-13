@@ -42,12 +42,12 @@ export class ZoneTelechargementAPI implements ISource {
             return false;
         }
         try {
-            const res = await fetch(this.baseUrl, {
-                method: 'HEAD',
-                headers: { 'User-Agent': 'Mozilla/5.0' },
-                signal: AbortSignal.timeout(5000)
+            const testUrl = `${this.baseUrl}`;
+            const res = await fetch(testUrl, {
+                headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' },
+                signal: AbortSignal.timeout(8000)
             });
-            return res.ok;
+            return res.ok || res.status === 403;
         } catch {
             return false;
         }

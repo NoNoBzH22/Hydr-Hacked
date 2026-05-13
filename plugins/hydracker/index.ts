@@ -16,12 +16,9 @@ export class HydrackerAPI implements ISource {
             return false;
         }
         try {
-            const res = await fetch(`${CONFIG_HYDRACKER.BASE_URL}/api/v1/titles?page=1&paginate=lengthAware`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${CONFIG_HYDRACKER.API_KEY}`
-                },
-                signal: AbortSignal.timeout(5000)
+            const res = await fetch(CONFIG_HYDRACKER.BASE_URL, {
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                signal: AbortSignal.timeout(8000)
             });
             return res.ok;
         } catch {
